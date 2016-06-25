@@ -21,6 +21,12 @@ PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_plot_001.jpg')
 
 
 def get_genes_info(filepath):
+    """
+    Returns
+    -------
+    genes_info : dict
+        {gene: p-val}
+    """
     with open(filepath, 'rU') as genes:
         reader = csv.reader(genes, delimiter='\t', dialect=csv.excel_tab)
         reader.next()
@@ -35,10 +41,19 @@ def create_proxy(color):
                                    mfc=color, mec='none', marker='s')
 
 
-if __name__ == "__main__":
-    all_genes_info = get_genes_info(GENES_FILE)
+def get_gene_muts():
+    """
+    Return
+    ------
+    genes_info (dict of dict)
+    {
+        gene : {
+                      'p' : p-value (float)
+                   sample : mutation (int)
+               }
+    }
+    """
     genes_info = {}
-
     with open(FILE) as gene_nonsilent:
         reader = csv.reader(gene_nonsilent, delimiter='\t')
         for line in reader:
@@ -48,9 +63,20 @@ if __name__ == "__main__":
                     genes_info[line[0]]['p'] = all_genes_info[line[0]]
                 genes_info[line[0]][line[1]] = int(line[3])
 
-    genes_list = sorted(genes_info.keys(), key=lambda x: all_genes_info[x])
-    samples = sorted(list(set(itertools.chain(*[genes_info[key].keys()
-                                                for key in genes_info.keys()])) - {'p'}))
+    return genes_info
+
+
+if __name__ == "__main__":
+    all_genes_info = get_genes_info(GENES_FILE)
+    genes_info = get_gene_muts()
+
+    genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
+    samples = list(set(itertools.chain(*[genes_info[key].keys()
+                                         for key in genes_info.keys()])
+                       ) - {'p'})
+    for gene in list(reversed(genes_list)):
+        samples = sorted(samples, key=lambda mut: mut not in genes_info[gene].keys())
+
     ncols = len(genes_list)
     nrows = len(samples)
 
@@ -64,8 +90,8 @@ if __name__ == "__main__":
             else:
                 image[r][c] = None
 
-    plt.subplot(221)
-    plt.rcParams["figure.figsize"] = [20.0, 15.0]
+    plt.subplot(132)
+    plt.rcParams["figure.figsize"] = [20.0, 5.0]
 
     fig, ax1 = plt.subplots()
     ax1.tick_params(length=0)
@@ -76,7 +102,7 @@ if __name__ == "__main__":
                              7: 'null+indel mutations'})
     color_map = ListedColormap(colors)
     proxies = [create_proxy(item) for item in colors]
-    plt.legend(proxies, mut_types.values(), numpoints=1,
+    plt.legend(proxies, mut_types.values(), numpoints=1, loc='lower right',
                markerscale=2, bbox_to_anchor=(0, 1), fontsize=12)
 
     comut_grid = ax1.imshow(image, aspect='auto', interpolation='nearest')
@@ -94,7 +120,7 @@ if __name__ == "__main__":
 
     # -log(p)
 
-    ax2 = fig.add_subplot(2, 2, (2, 4))
+    ax2 = fig.add_subplot(133)
 
     y_pos = range(len(genes_list))
     neg_log_p = [math.log(genes_info[gene]['p']) * -1
@@ -112,48 +138,54 @@ if __name__ == "__main__":
 
     # stacked bars
 
-    ax3 = fig.add_subplot(2, 2, 3)
+    ax3 = fig.add_subplot(131)
 
-    sample_info = {}
-    for s in samples:
-        for gene in genes_list:
-            if s in genes_info[gene].keys():
-                if s not in sample_info.keys():
-                    sample_info[s] = {}
+    mut_summary = {}
+    for gene in genes_list:
+        for s, m in genes_info[gene].items():
+            if s != 'p':
+                if gene not in mut_summary.keys():
+                    mut_summary[gene] = {}
                     for mut in range(3, 8):
-                        sample_info[s][mut] = 0
-                mut = genes_info[gene][s]
-                sample_info[s][mut] += 1
+                        mut_summary[gene][mut] = 0
+                mut_summary[gene][m] += 1
 
-    totals = [sum([sample_info[s][m] for m in range(3, 8)]) for s in samples]
+    totals = [sum([mut_summary[g][m] for m in range(3, 8)]) for g in genes_list]
 
     bar_data = {}
     for mut in range(3, 8):
         bar_data[mut] = [(float(n) / total * 100) for n, total in
-                         zip([sample_info[s][mut] for s in samples], totals)]
-        bar_l = [i for i in range(len(samples))]
-        bottom = [0] * len(samples)
-        for x in range(3, mut):
-            bottom = [base + last for base, last in zip(bottom, bar_data[x])]
-        ax3.bar(bar_l, bar_data[mut], bottom=bottom,
-                color=colors[mut - 3], linewidth=0, width=1)
+                         zip([mut_summary[g][mut] for g in genes_list], totals)]
+        bar_l = list(reversed([i for i in range(len(genes_list))]))
+        bottom = [0] * len(genes_list)
+        for m in range(3, mut):
+            bottom = [base + last for base, last in zip(bottom, bar_data[m])]
+        ax3.barh(bar_l, bar_data[mut], 1, left=bottom,
+                 color=colors[mut - 3], linewidth=0)
 
-    ax3.set_xlim([0, len(samples)])
-    ax3.set_ylim([0, 100])
-    ax3.tick_params(bottom='off', labelbottom='off')
-    ax3.set_ylabel('%', rotation=0)
-    ax3.get_yaxis().set_tick_params(direction='out')
+    ax3.set_xlim([0, 100])
+    ax3.set_ylim([0, len(genes_list)])
+    ax3.tick_params(left='off', labelleft='off')
+    ax3.set_xlabel('%')
+    ax3.set_xticklabels([0, 20, 40, 60, 80, 100], rotation='vertical')
+    ax3.get_xaxis().set_tick_params(direction='out')
 
-    # adjust box heights
+    # adjust box positions
 
-    box1 = ax1.get_position()
-    ax1.set_position([box1.x0, box1.y0 + box1.height * 0.2,
-                      box1.width, box1.height * 0.2])
-    box2 = ax2.get_position()
-    ax2.set_position([box2.x0, box2.y0 + box2.height * 0.2,
-                      box2.width, box2.height * 0.2])
     box3 = ax3.get_position()
-    ax3.set_position([box3.x0, ax1.get_position().y0 - box3.height * 0.3,
-                      box1.width, box3.height * 0.3])
+    ax3.set_position([box3.x0, box3.y0 + box3.height * 0.5,
+                      box3.width * 0.2, box3.height * 0.5])
+    box1 = ax1.get_position()
+    ax1.set_position([box1.x0 + box3.width * 0.2, box1.y0 + box1.height * 0.5,
+                      box1.width, box1.height * 0.5])
+    box2 = ax2.get_position()
+    ax2.set_position([box2.x0, box2.y0 + box2.height * 0.5,
+                      box2.width, box2.height * 0.5])
+
+    # lower everything
+    for ax in (ax1, ax2, ax3):
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 - box.height * 0.5,
+                         box.width, box.height])
 
     plt.savefig(PLOT_DEST)
