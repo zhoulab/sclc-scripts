@@ -67,7 +67,33 @@ def get_gene_muts():
     return genes_info
 
 
+def get_gene_mut_types(files):
+    """
+    Return
+    ------
+    genes_info (dict of dict)
+    {
+        gene : {
+                      'p' : p-value (float)
+                   sample : [mut types] (list of str)
+               }
+    }
+    """
     all_genes_info = get_genes_info(GENES_FILE)
+    genes_info = {}
+    for file in files:
+        with open(file) as gene_nonsilent:
+            reader = csv.reader(gene_nonsilent, delimiter='\t')
+            for line in reader:
+                if line[0] in all_genes_info:
+                    if line[0] not in genes_info:
+                        genes_info[line[0]] = {}
+                        genes_info[line[0]]['p'] = all_genes_info[line[0]]
+                    if line[1] not in genes_info[line[0]]:
+                        genes_info[line[0]][line[1]] = []
+                    genes_info[line[0]][line[1]].append(line[2])
+
+    return genes_info
 def generate_mut_plot():
     genes_info = get_gene_muts()
 
