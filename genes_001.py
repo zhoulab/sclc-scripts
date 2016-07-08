@@ -41,6 +41,20 @@ def create_proxy(color):
                                    mfc=color, mec='none', marker='s')
 
 
+def get_mut_vals(files, col):
+    """Return distinct mutation data from all files, under index *col*"""
+    if type(files) is str:
+        files = [files]
+    vals = set()
+    for file in files:
+        with open(file) as f:
+            reader = csv.reader(f, delimiter='\t')
+            for line in reader:
+                if line[col] not in vals:
+                    vals.add(line[col])
+    return vals
+
+
 def get_gene_muts():
     """
     Return
@@ -94,6 +108,8 @@ def get_gene_mut_types(files):
                     genes_info[line[0]][line[1]].append(line[2])
 
     return genes_info
+
+
 def generate_mut_plot():
     genes_info = get_gene_muts()
 
