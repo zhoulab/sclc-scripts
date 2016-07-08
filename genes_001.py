@@ -49,33 +49,34 @@ def get_gene_muts():
     {
         gene : {
                       'p' : p-value (float)
-                   sample : mutation (int)
+                   sample : mutation (str)
                }
     }
     """
+    all_genes_info = get_genes_info(GENES_FILE)
     genes_info = {}
     with open(FILE) as gene_nonsilent:
         reader = csv.reader(gene_nonsilent, delimiter='\t')
         for line in reader:
-            if line[0] in all_genes_info.keys():
-                if line[0] not in genes_info.keys():
+            if line[0] in all_genes_info:
+                if line[0] not in genes_info:
                     genes_info[line[0]] = {}
                     genes_info[line[0]]['p'] = all_genes_info[line[0]]
-                genes_info[line[0]][line[1]] = int(line[3])
+                genes_info[line[0]][line[1]] = line[3]
 
     return genes_info
 
 
-if __name__ == "__main__":
     all_genes_info = get_genes_info(GENES_FILE)
+def generate_mut_plot():
     genes_info = get_gene_muts()
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
     samples = list(set(itertools.chain(*[genes_info[key].keys()
-                                         for key in genes_info.keys()])
+                                         for key in genes_info])
                        ) - {'p'})
     for gene in list(reversed(genes_list)):
-        samples = sorted(samples, key=lambda mut: mut not in genes_info[gene].keys())
+        samples = sorted(samples, key=lambda mut: mut not in genes_info[gene])
 
     ncols = len(genes_list)
     nrows = len(samples)
@@ -85,7 +86,7 @@ if __name__ == "__main__":
 
     for r, gene in enumerate(genes_list):
         for c, sample in enumerate(samples):
-            if sample in genes_info[gene].keys():
+            if sample in genes_info[gene]:
                 image[r][c] = genes_info[gene][sample]
             else:
                 image[r][c] = None
@@ -97,9 +98,9 @@ if __name__ == "__main__":
     ax1.tick_params(length=0)
 
     colors = ['#ad2a1a', '#da621e', '#d3b53d', '#829356', '#0d3d56']
-    mut_types = OrderedDict({3: 'C:G transitions', 4: 'C:G transversions',
-                             5: 'A:T transitions', 6: 'A:T transversions',
-                             7: 'null+indel mutations'})
+    mut_types = OrderedDict([('3', 'C:G transitions'), ('4', 'C:G transversions'),
+                             ('5', 'A:T transitions'), ('6', 'A:T transversions'),
+                             ('7', 'null+indel mutations')])
     color_map = ListedColormap(colors)
     proxies = [create_proxy(item) for item in colors]
     plt.legend(proxies, mut_types.values(), numpoints=1, loc='lower right',
@@ -124,7 +125,7 @@ if __name__ == "__main__":
 
     y_pos = range(len(genes_list))
     neg_log_p = [math.log(genes_info[gene]['p']) * -1
-                 for gene in genes_info.keys()]
+                 for gene in genes_info]
 
     ax2.barh(y_pos, sorted(neg_log_p), 1, align='edge',
              color='#737373', edgecolor='black', linewidth=1, log=True)
@@ -144,24 +145,24 @@ if __name__ == "__main__":
     for gene in genes_list:
         for s, m in genes_info[gene].items():
             if s != 'p':
-                if gene not in mut_summary.keys():
+                if gene not in mut_summary:
                     mut_summary[gene] = {}
-                    for mut in range(3, 8):
+                    for mut in mut_types:
                         mut_summary[gene][mut] = 0
                 mut_summary[gene][m] += 1
 
-    totals = [sum([mut_summary[g][m] for m in range(3, 8)]) for g in genes_list]
+    totals = [sum([mut_summary[g][m] for m in mut_types]) for g in genes_list]
 
     bar_data = {}
-    for mut in range(3, 8):
+    for mut in mut_types:
         bar_data[mut] = [(float(n) / total * 100) for n, total in
                          zip([mut_summary[g][mut] for g in genes_list], totals)]
         bar_l = list(reversed([i for i in range(len(genes_list))]))
         bottom = [0] * len(genes_list)
-        for m in range(3, mut):
+        for m in mut_types.keys()[:mut_types.keys().index(mut)]:
             bottom = [base + last for base, last in zip(bottom, bar_data[m])]
         ax3.barh(bar_l, bar_data[mut], 1, left=bottom,
-                 color=colors[mut - 3], linewidth=0)
+                 color=colors[mut_types.keys().index(mut)], linewidth=0)
 
     ax3.set_xlim([0, 100])
     ax3.set_ylim([0, len(genes_list)])
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     ax1.set_position([box1.x0 + box3.width * 0.2, box1.y0 + box1.height * 0.5,
                       box1.width, box1.height * 0.5])
     box2 = ax2.get_position()
-    ax2.set_position([box2.x0, box2.y0 + box2.height * 0.5,
+    ax2.set_position([box2.x0 * 1.01, box2.y0 + box2.height * 0.5,
                       box2.width, box2.height * 0.5])
 
     # lower everything
@@ -189,3 +190,7 @@ if __name__ == "__main__":
                          box.width, box.height])
 
     plt.savefig(PLOT_DEST)
+
+
+if __name__ == "__main__":
+    generate_mut_plot()
