@@ -17,7 +17,8 @@ if not os.path.exists(OUTPUT_DIRECTORY):
 
 FILE = os.path.join(BASE_DIR, 'data/genenonsilent200.txt')
 GENES_FILE = os.path.join(BASE_DIR, 'data/SigGenes_001.txt')
-PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_plot_001.jpg')
+MUT_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_plot_001.jpg')
+MUT_TYPES_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_type_plot_001.jpg')
 
 
 def get_genes_info(filepath):
@@ -29,7 +30,7 @@ def get_genes_info(filepath):
     """
     with open(filepath, 'rU') as genes:
         reader = csv.reader(genes, delimiter='\t', dialect=csv.excel_tab)
-        reader.next()
+        reader.next()  # ignore header
         genes_info = {}
         for line in reader:
             genes_info[line[0]] = float(line[13])
@@ -37,8 +38,28 @@ def get_genes_info(filepath):
 
 
 def create_proxy(color):
+    """Generate color proxy for use in plt.legend"""
     return matplotlib.lines.Line2D([0], [0], linestyle='none',
                                    mfc=color, mec='none', marker='s')
+
+
+def check_mut_type(s):
+    """
+    The names of some values vary between different files.
+    Put duplicate definitions here.
+
+    Variables
+    ---------
+    dup_map : dict
+        {k: v} *k* is duplicate, *v* is display value
+    """
+    dup_map = {'Missense_Mutation': 'missense',
+               'Nonsense_Mutation': 'nonsense',
+               'Silent': 'silent',
+               'Splice_Site': 'splice'}
+    if s in dup_map:
+        return dup_map[s]
+    return s
 
 
 def get_mut_vals(files, col):
@@ -50,8 +71,9 @@ def get_mut_vals(files, col):
         with open(file) as f:
             reader = csv.reader(f, delimiter='\t')
             for line in reader:
-                if line[col] not in vals:
-                    vals.add(line[col])
+                val = check_mut_type(line[col])
+                if val not in vals:
+                    vals.add(val)
     return vals
 
 
@@ -105,9 +127,86 @@ def get_gene_mut_types(files):
                         genes_info[line[0]]['p'] = all_genes_info[line[0]]
                     if line[1] not in genes_info[line[0]]:
                         genes_info[line[0]][line[1]] = []
-                    genes_info[line[0]][line[1]].append(line[2])
+                    mut_type = check_mut_type(line[2])
+                    genes_info[line[0]][line[1]].append(mut_type)
 
     return genes_info
+
+
+def generate_mut_type_plot(save_file, ignore=None):
+    """
+    Data Structures
+    ---------------
+    mut_type_counts (dict of dict)
+    {
+        gene : {
+                   type : count
+               }
+    }
+
+    """
+    if not ignore:
+        ignore = []
+    files = [os.path.join(BASE_DIR, 'data/Peifer2columns.txt'),
+             os.path.join(BASE_DIR, 'data/Rudin_59samples.txt')]
+    genes_info = get_gene_mut_types(files)
+
+    mut_type_counts = {}
+    mut_vals = list(get_mut_vals(files, 2))  # ordered to generate bar
+    for gene, d in genes_info.items():
+        mut_type_counts[gene] = {}
+        for mut_type in mut_vals:
+            mut_type_counts[gene][mut_type] = 0
+        for k, v in d.items():
+            if k != 'p':
+                for mut_type in v:
+                    mut_type_counts[gene][mut_type] += 1
+
+    genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
+
+    plt.subplot()
+    plt.rcParams["figure.figsize"] = [10.0, 10.0]
+    fig, ax = plt.subplots()
+
+    color = OrderedDict()
+    proxy = OrderedDict()
+    for m, c in zip(mut_vals, get_fixed_colors(len(mut_vals))):
+        color[m] = c
+        if m not in ignore:
+            proxy[m] = create_proxy(c)
+
+    plt.legend(reversed(proxy.values()), reversed(proxy.keys()),
+               numpoints=1, loc='upper left', markerscale=2,
+               bbox_to_anchor=(1, 1), fontsize=10)
+
+    totals = [sum([mut_type_counts[g][mt]
+                   for mt in mut_vals if mt not in ignore])
+              for g in genes_list]
+    bar_data = {}
+    for mut in mut_vals:
+        if mut in ignore:
+            bar_data[mut] = [0] * len(genes_list)
+        else:
+            bar_data[mut] = [(float(n) / total * 100) for n, total in
+                             zip([mut_type_counts[g][mut]
+                                  for g in genes_list], totals)]
+        bar_l = range(len(genes_list))
+        bottom = [0] * len(genes_list)
+        for m in mut_vals[:mut_vals.index(mut)]:
+            bottom = [base + last for base, last in zip(bottom, bar_data[m])]
+        ax.bar(bar_l, bar_data[mut], 1, bottom=bottom,
+               color=color[mut], linewidth=0)
+
+    ax.set_ylim([0, 100])
+    ax.get_yaxis().set_tick_params(direction='out')
+    ax.set_ylabel('%', rotation=0)
+    ax.set_xticklabels(genes_list, ha='left', rotation=45)
+
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0,
+                     box.width * 0.8, box.height])
+
+    plt.savefig(save_file)
 
 
 def generate_mut_plot():
@@ -231,8 +330,25 @@ def generate_mut_plot():
         ax.set_position([box.x0, box.y0 - box.height * 0.5,
                          box.width, box.height])
 
-    plt.savefig(PLOT_DEST)
+    plt.savefig(MUT_PLOT_DEST)
+
+
+def get_fixed_colors(n):
+    """Return visually contrasting RBG hex codes n < 26"""
+    # these colors seem to be visually contrasting
+    colors = get_spaced_colors(25)
+    if not 0 <= n <= 25:
+        raise ValueError('unsupported number of colors')
+    return colors[:n]
+
+
+def get_spaced_colors(n):
+    """Return list of RGB hex codes that are evenly spaced numerically"""
+    max_value = 16581375  # 255**3
+    interval = int(max_value / n)
+    return ['#' + hex(i)[2:].zfill(6)
+            for i in range(0, max_value, interval)][:-1]
 
 
 if __name__ == "__main__":
-    generate_mut_plot()
+    generate_mut_type_plot(MUT_TYPES_PLOT_DEST)
