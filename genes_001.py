@@ -209,7 +209,7 @@ def generate_mut_type_plot(save_file, ignore=None):
     plt.savefig(save_file)
 
 
-def generate_mut_plot():
+def generate_mut_plot(save_file, p_val=True, percent_graph=True):
     genes_info = get_gene_muts()
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
@@ -218,6 +218,7 @@ def generate_mut_plot():
                        ) - {'p'})
     for gene in list(reversed(genes_list)):
         samples = sorted(samples, key=lambda mut: mut not in genes_info[gene])
+    sample_nums = [(i + 1, s) for i, s in enumerate(samples)]
 
     ncols = len(genes_list)
     nrows = len(samples)
@@ -254,83 +255,80 @@ def generate_mut_plot():
     ax1.xaxis.set_ticks(np.arange(-0.5, nrows - 0.5))
     ax1.yaxis.tick_right()
     ax1.yaxis.set_ticks(np.arange(-0.5, ncols - 0.5))
-    ax1.set_xticklabels(list(samples), rotation='vertical', fontsize=4, ha='left')
+    ax1.set_xticklabels([i for i, __ in sample_nums], rotation='vertical', fontsize=4, ha='left')
     ax1.set_yticklabels(genes_list, fontsize=13, va='top')
     ax1.grid(linestyle='solid', color=((.3,) * 3))
     box = ax1.get_position()
     ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
     # -log(p)
-
-    ax2 = fig.add_subplot(133)
-
-    y_pos = range(len(genes_list))
-    neg_log_p = [math.log(genes_info[gene]['p']) * -1
-                 for gene in genes_info]
-
-    ax2.barh(y_pos, sorted(neg_log_p), 1, align='edge',
-             color='#737373', edgecolor='black', linewidth=1, log=True)
-    ax2.set_yticklabels([])
-    ax2.set_xlabel('-log(p-value)')
-
-    box = ax2.get_position()
-    ax2.set_position([box.x0 + box.width * 0.71, box.y0,
-                      box.width * 0.2, box.height])
-    ax2.set_ylim([0, len(genes_list)])
+    if p_val:
+        ax2 = fig.add_subplot(133)
+        y_pos = range(len(genes_list))
+        neg_log_p = [math.log(genes_info[gene]['p']) * -1
+                     for gene in genes_info]
+        ax2.barh(y_pos, sorted(neg_log_p), 1, align='edge',
+                 color='#737373', edgecolor='black', linewidth=1, log=True)
+        ax2.set_yticklabels([])
+        ax2.set_xlabel('-log(p-value)')
+        box = ax2.get_position()
+        ax2.set_position([box.x0 + box.width * 0.71, box.y0,
+                          box.width * 0.2, box.height])
+        ax2.set_ylim([0, len(genes_list)])
 
     # stacked bars
-
-    ax3 = fig.add_subplot(131)
-
-    mut_summary = {}
-    for gene in genes_list:
-        for s, m in genes_info[gene].items():
-            if s != 'p':
-                if gene not in mut_summary:
-                    mut_summary[gene] = {}
-                    for mut in mut_types:
-                        mut_summary[gene][mut] = 0
-                mut_summary[gene][m] += 1
-
-    totals = [sum([mut_summary[g][m] for m in mut_types]) for g in genes_list]
-
-    bar_data = {}
-    for mut in mut_types:
-        bar_data[mut] = [(float(n) / total * 100) for n, total in
-                         zip([mut_summary[g][mut] for g in genes_list], totals)]
-        bar_l = list(reversed([i for i in range(len(genes_list))]))
-        bottom = [0] * len(genes_list)
-        for m in mut_types.keys()[:mut_types.keys().index(mut)]:
-            bottom = [base + last for base, last in zip(bottom, bar_data[m])]
-        ax3.barh(bar_l, bar_data[mut], 1, left=bottom,
-                 color=colors[mut_types.keys().index(mut)], linewidth=0)
-
-    ax3.set_xlim([0, 100])
-    ax3.set_ylim([0, len(genes_list)])
-    ax3.tick_params(left='off', labelleft='off')
-    ax3.set_xlabel('%')
-    ax3.set_xticklabels([0, 20, 40, 60, 80, 100], rotation='vertical')
-    ax3.get_xaxis().set_tick_params(direction='out')
+    if percent_graph:
+        ax3 = fig.add_subplot(131)
+        mut_summary = {}
+        for gene in genes_list:
+            for s, m in genes_info[gene].items():
+                if s != 'p':
+                    if gene not in mut_summary:
+                        mut_summary[gene] = {}
+                        for mut in mut_types:
+                            mut_summary[gene][mut] = 0
+                    mut_summary[gene][m] += 1
+        totals = [sum([mut_summary[g][m] for m in mut_types]) for g in genes_list]
+        bar_data = {}
+        for mut in mut_types:
+            bar_data[mut] = [(float(n) / total * 100) for n, total in
+                             zip([mut_summary[g][mut] for g in genes_list], totals)]
+            bar_l = list(reversed([i for i in range(len(genes_list))]))
+            bottom = [0] * len(genes_list)
+            for m in mut_types.keys()[:mut_types.keys().index(mut)]:
+                bottom = [base + last for base, last in zip(bottom, bar_data[m])]
+            ax3.barh(bar_l, bar_data[mut], 1, left=bottom,
+                     color=colors[mut_types.keys().index(mut)], linewidth=0)
+        ax3.set_xlim([0, 100])
+        ax3.set_ylim([0, len(genes_list)])
+        ax3.tick_params(left='off', labelleft='off')
+        ax3.set_xlabel('%')
+        ax3.set_xticklabels([0, 20, 40, 60, 80, 100], rotation='vertical')
+        ax3.get_xaxis().set_tick_params(direction='out')
 
     # adjust box positions
+    if p_val and percent_graph:
+        box3 = ax3.get_position()
+        ax3.set_position([box3.x0, box3.y0 + box3.height * 0.5,
+                          box3.width * 0.2, box3.height * 0.5])
+        box1 = ax1.get_position()
+        ax1.set_position([box1.x0 + box3.width * 0.2, box1.y0 + box1.height * 0.5,
+                          box1.width, box1.height * 0.5])
+        box2 = ax2.get_position()
+        ax2.set_position([box2.x0 * 1.01, box2.y0 + box2.height * 0.5,
+                          box2.width, box2.height * 0.5])
 
-    box3 = ax3.get_position()
-    ax3.set_position([box3.x0, box3.y0 + box3.height * 0.5,
-                      box3.width * 0.2, box3.height * 0.5])
-    box1 = ax1.get_position()
-    ax1.set_position([box1.x0 + box3.width * 0.2, box1.y0 + box1.height * 0.5,
-                      box1.width, box1.height * 0.5])
-    box2 = ax2.get_position()
-    ax2.set_position([box2.x0 * 1.01, box2.y0 + box2.height * 0.5,
-                      box2.width, box2.height * 0.5])
+        # lower everything
+        for ax in (ax1, ax2, ax3):
+            box = ax.get_position()
+            ax.set_position([box.x0, box.y0 - box.height * 0.5,
+                             box.width, box.height])
+    else:
+        box = ax1.get_position()
+        ax1.set_position([box.x0, box.y0 + box.height * 0.25,
+                          box.width, box.height * 0.5])
 
-    # lower everything
-    for ax in (ax1, ax2, ax3):
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0 - box.height * 0.5,
-                         box.width, box.height])
-
-    plt.savefig(MUT_PLOT_DEST)
+    plt.savefig(save_file)
 
 
 def get_fixed_colors(n):
@@ -351,4 +349,4 @@ def get_spaced_colors(n):
 
 
 if __name__ == "__main__":
-    generate_mut_type_plot(MUT_TYPES_PLOT_DEST)
+    generate_mut_plot(MUT_PLOT_DEST)
