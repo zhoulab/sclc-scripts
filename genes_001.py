@@ -4,10 +4,9 @@ import itertools
 import math
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.colors import ListedColormap
 from collections import OrderedDict
-
-import numpy as np
 
 BASE_DIR = os.path.dirname(os.getcwd())
 
@@ -15,27 +14,27 @@ OUTPUT_DIRECTORY = os.path.join(BASE_DIR, 'results')
 if not os.path.exists(OUTPUT_DIRECTORY):
     os.makedirs(OUTPUT_DIRECTORY)
 
-FILE = os.path.join(BASE_DIR, 'data/genenonsilent200.txt')
-GENES_FILE = os.path.join(BASE_DIR, 'data/SigGenes_001.txt')
+GENE_MUT_FILE = os.path.join(BASE_DIR, 'data/genenonsilent200.txt')
+SIG_GENES_FILE = os.path.join(BASE_DIR, 'data/SigGenes_001.txt')
 MUT_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_plot_001.jpg')
-MUT_TYPES_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_type_plot_001.jpg')
 SAMPLE_ID_OUT = os.path.join(BASE_DIR, 'results/SampleIDs.txt')
+# MUT_TYPES_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_type_plot_001.jpg')
+# MUT_TYPE_FILES = [os.path.join(BASE_DIR, 'data/Peifer2columns.txt'),
+#                   os.path.join(BASE_DIR, 'data/Rudin_59samples.txt')]
 
 
-def get_genes_info(filepath):
+def get_gene_pvals(fpath):
+    """Return dictionary for gene p-values from `fpath`
+
+    Return
+    ------
+    dict : {gene: p-val}
     """
-    Returns
-    -------
-    genes_info : dict
-        {gene: p-val}
-    """
-    with open(filepath, 'rU') as genes:
+    with open(fpath, 'rU') as genes:
         reader = csv.reader(genes, delimiter='\t', dialect=csv.excel_tab)
         reader.next()  # ignore header
-        genes_info = {}
-        for line in reader:
-            genes_info[line[0]] = float(line[13])
-        return genes_info
+        return {line[0]: float(line[13])
+                for line in reader}
 
 
 def create_proxy(color):
@@ -52,7 +51,11 @@ def check_mut_type(s):
     Variables
     ---------
     dup_map : dict
-        {k: v} *k* is duplicate, *v* is display value
+        {k: v} `k` is duplicate, `v` is display value
+
+    Return
+    ------
+    str : corrected duplicate, otherwise original string
     """
     dup_map = {'Missense_Mutation': 'missense',
                'Nonsense_Mutation': 'nonsense',
@@ -64,7 +67,7 @@ def check_mut_type(s):
 
 
 def get_mut_vals(files, col):
-    """Return distinct mutation data from all files, under index *col*"""
+    """Return distinct mutation data from all files, under index `col`"""
     if type(files) is str:
         files = [files]
     vals = set()
@@ -73,12 +76,11 @@ def get_mut_vals(files, col):
             reader = csv.reader(f, delimiter='\t')
             for line in reader:
                 val = check_mut_type(line[col])
-                if val not in vals:
-                    vals.add(val)
+                vals.add(val)
     return vals
 
 
-def get_gene_muts():
+def get_gene_muts(gene_mut_file, sig_genes_file):
     """
     Return
     ------
@@ -90,9 +92,9 @@ def get_gene_muts():
                }
     }
     """
-    all_genes_info = get_genes_info(GENES_FILE)
+    all_genes_info = get_gene_pvals(sig_genes_file)
     genes_info = {}
-    with open(FILE) as gene_nonsilent:
+    with open(gene_mut_file) as gene_nonsilent:
         reader = csv.reader(gene_nonsilent, delimiter='\t')
         for line in reader:
             if line[0] in all_genes_info:
@@ -100,11 +102,10 @@ def get_gene_muts():
                     genes_info[line[0]] = {}
                     genes_info[line[0]]['p'] = all_genes_info[line[0]]
                 genes_info[line[0]][line[1]] = line[3]
-
     return genes_info
 
 
-def get_gene_mut_types(files):
+def get_gene_mut_types(files, sig_genes_file):
     """
     Return
     ------
@@ -116,7 +117,7 @@ def get_gene_mut_types(files):
                }
     }
     """
-    all_genes_info = get_genes_info(GENES_FILE)
+    all_genes_info = get_gene_pvals(sig_genes_file)
     genes_info = {}
     for file in files:
         with open(file) as gene_nonsilent:
@@ -130,30 +131,31 @@ def get_gene_mut_types(files):
                         genes_info[line[0]][line[1]] = []
                     mut_type = check_mut_type(line[2])
                     genes_info[line[0]][line[1]].append(mut_type)
-
     return genes_info
 
 
-def generate_mut_type_plot(save_file, ignore=None):
+def generate_mut_type_plot(fpaths, save_file, sig_genes_file, ignore=None):
     """
-    Data Structures
-    ---------------
+    Parameters
+    ----------
+    save_file : filepath to save plot JPEG
+    ignore : list of mutation types to ignore
+
+    Variables
+    ---------
     mut_type_counts (dict of dict)
     {
         gene : {
                    type : count
                }
     }
-
     """
     if not ignore:
         ignore = []
-    files = [os.path.join(BASE_DIR, 'data/Peifer2columns.txt'),
-             os.path.join(BASE_DIR, 'data/Rudin_59samples.txt')]
-    genes_info = get_gene_mut_types(files)
+    genes_info = get_gene_mut_types(fpaths, sig_genes_file)
 
+    mut_vals = list(get_mut_vals(fpaths, 2))  # ordered to generate bar
     mut_type_counts = {}
-    mut_vals = list(get_mut_vals(files, 2))  # ordered to generate bar
     for gene, d in genes_info.items():
         mut_type_counts[gene] = {}
         for mut_type in mut_vals:
@@ -166,7 +168,7 @@ def generate_mut_type_plot(save_file, ignore=None):
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
 
     plt.subplot()
-    plt.rcParams["figure.figsize"] = [10.0, 10.0]
+    plt.rcParams['figure.figsize'] = [10.0, 10.0]
     fig, ax = plt.subplots()
 
     color = OrderedDict()
@@ -210,9 +212,19 @@ def generate_mut_type_plot(save_file, ignore=None):
     plt.savefig(save_file)
 
 
-def generate_mut_plot(save_file, sample_ids_dest=None,
-                      p_val=True, percent_graph=True):
-    genes_info = get_gene_muts()
+def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
+                      sample_ids_dest=None, p_val=True, percent_graph=True):
+    """
+    Parameters
+    ----------
+    save_file : filepath to save plot JPEG
+    sample_ids_dest : optional filepath to save sample IDs
+                      in the format (id, name)
+    p_val : optional generate p-value graph [-log(p)]
+    percent_graph : optional generate stacked bar graph
+                    for mutation distributions
+    """
+    genes_info = get_gene_muts(gene_mut_file, sig_genes_file)
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
     samples = list(set(itertools.chain(*[genes_info[key].keys()
@@ -247,8 +259,10 @@ def generate_mut_plot(save_file, sample_ids_dest=None,
     ax1.tick_params(length=0)
 
     colors = ['#ad2a1a', '#da621e', '#d3b53d', '#829356', '#0d3d56']
-    mut_types = OrderedDict([('3', 'C:G transitions'), ('4', 'C:G transversions'),
-                             ('5', 'A:T transitions'), ('6', 'A:T transversions'),
+    mut_types = OrderedDict([('3', 'C:G transitions'),
+                             ('4', 'C:G transversions'),
+                             ('5', 'A:T transitions'),
+                             ('6', 'A:T transversions'),
                              ('7', 'null+indel mutations')])
     color_map = ListedColormap(colors)
     proxies = [create_proxy(item) for item in colors]
@@ -262,7 +276,8 @@ def generate_mut_plot(save_file, sample_ids_dest=None,
     ax1.xaxis.set_ticks(np.arange(-0.5, nrows - 0.5))
     ax1.yaxis.tick_right()
     ax1.yaxis.set_ticks(np.arange(-0.5, ncols - 0.5))
-    ax1.set_xticklabels([i for i, __ in sample_nums], rotation='vertical', fontsize=4, ha='left')
+    ax1.set_xticklabels([i for i, __ in sample_nums],
+                        rotation='vertical', fontsize=4, ha='left')
     ax1.set_yticklabels(genes_list, fontsize=13, va='top')
     ax1.grid(linestyle='solid', color=((.3,) * 3))
     box = ax1.get_position()
@@ -295,7 +310,9 @@ def generate_mut_plot(save_file, sample_ids_dest=None,
                         for mut in mut_types:
                             mut_summary[gene][mut] = 0
                     mut_summary[gene][m] += 1
-        totals = [sum([mut_summary[g][m] for m in mut_types]) for g in genes_list]
+        totals = [sum([mut_summary[g][m]
+                       for m in mut_types])
+                  for g in genes_list]
         bar_data = {}
         for mut in mut_types:
             bar_data[mut] = [(float(n) / total * 100) for n, total in
@@ -303,7 +320,8 @@ def generate_mut_plot(save_file, sample_ids_dest=None,
             bar_l = list(reversed([i for i in range(len(genes_list))]))
             bottom = [0] * len(genes_list)
             for m in mut_types.keys()[:mut_types.keys().index(mut)]:
-                bottom = [base + last for base, last in zip(bottom, bar_data[m])]
+                bottom = [base + last
+                          for base, last in zip(bottom, bar_data[m])]
             ax3.barh(bar_l, bar_data[mut], 1, left=bottom,
                      color=colors[mut_types.keys().index(mut)], linewidth=0)
         ax3.set_xlim([0, 100])
@@ -339,7 +357,7 @@ def generate_mut_plot(save_file, sample_ids_dest=None,
 
 
 def get_fixed_colors(n):
-    """Return visually contrasting RBG hex codes n < 26"""
+    """Return visually contrasting RBG hex codes, `n` < 26"""
     # these colors seem to be visually contrasting
     colors = get_spaced_colors(25)
     if not 0 <= n <= 25:
@@ -356,4 +374,5 @@ def get_spaced_colors(n):
 
 
 if __name__ == "__main__":
-    generate_mut_plot(MUT_PLOT_DEST, sample_ids_dest=SAMPLE_ID_OUT)
+    generate_mut_plot(MUT_PLOT_DEST, GENE_MUT_FILE, SIG_GENES_FILE,
+                      sample_ids_dest=SAMPLE_ID_OUT)
