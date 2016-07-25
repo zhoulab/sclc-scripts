@@ -19,6 +19,7 @@ FILE = os.path.join(BASE_DIR, 'data/genenonsilent200.txt')
 GENES_FILE = os.path.join(BASE_DIR, 'data/SigGenes_001.txt')
 MUT_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_plot_001.jpg')
 MUT_TYPES_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_type_plot_001.jpg')
+SAMPLE_ID_OUT = os.path.join(BASE_DIR, 'results/SampleIDs.txt')
 
 
 def get_genes_info(filepath):
@@ -209,7 +210,8 @@ def generate_mut_type_plot(save_file, ignore=None):
     plt.savefig(save_file)
 
 
-def generate_mut_plot(save_file, p_val=True, percent_graph=True):
+def generate_mut_plot(save_file, sample_ids_dest=None,
+                      p_val=True, percent_graph=True):
     genes_info = get_gene_muts()
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
@@ -219,6 +221,11 @@ def generate_mut_plot(save_file, p_val=True, percent_graph=True):
     for gene in list(reversed(genes_list)):
         samples = sorted(samples, key=lambda mut: mut not in genes_info[gene])
     sample_nums = [(i + 1, s) for i, s in enumerate(samples)]
+    if sample_ids_dest:
+        with open(sample_ids_dest, 'w') as id_file:
+            fwriter = csv.writer(id_file, delimiter='\t')
+            for sample_info in sample_nums:
+                fwriter.writerow(sample_info)
 
     ncols = len(genes_list)
     nrows = len(samples)
@@ -349,4 +356,4 @@ def get_spaced_colors(n):
 
 
 if __name__ == "__main__":
-    generate_mut_plot(MUT_PLOT_DEST)
+    generate_mut_plot(MUT_PLOT_DEST, sample_ids_dest=SAMPLE_ID_OUT)
