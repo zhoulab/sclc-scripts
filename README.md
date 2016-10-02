@@ -2,9 +2,16 @@
 
 ## Quickstart
 
-    $ python gene_pairs.py
+    $ ./bootstrap.sh
+    $ python -u gene_pairs.py
     Enter gene list (Sig43List/Sig200List/MoreThan2):
     Enter alpha level (0 to include all results):
+
+## Requirements
+
+* `numpy`
+* `scipy`
+* `statsmodels` (0.8.0rc1)
 
 ## Data Source
 
