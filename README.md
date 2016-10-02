@@ -36,8 +36,7 @@ Stored in `results/` directory.
 
 ### Gene Pairs
 
-`GenePairs_{list_name}_{alpha}.txt` or
-`GenePairs_{list_name}.txt`
+* `GenePairs_{list_name}.txt`
 
 Columns:
 
@@ -46,11 +45,11 @@ Columns:
 * `Gene2`
 * `Gene2Freq`
 * `PercofSamples`
-* `Co_Occurrence`
+* `Co_Occurrence` (sort descending)
 
 ### Gene Pairs with Fisher Test
 
-`FisherGenePairs_{list_name}_{alpha}.txt` or
+* `FisherGenePairs_{list_name}_{alpha}.txt` or
 `FisherGenePairs_{list_name}.txt`
 
 Columns:
@@ -60,7 +59,7 @@ Columns:
 * `Gene2`
 * `Gene2Samples`
 * `Common`
-* `P_value`
+* `P_value` (sort ascending)
 * `Adjusted_p`
 
 ## Process

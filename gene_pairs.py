@@ -177,37 +177,38 @@ def write_files(data, perc_dict_file, num_dict_file,
         pairs.add(pair)
     print
 
-    sorted_pairs = sorted(pairs, key=lambda (p): (p.Gene1, p.Gene2))
-
-    p_vals = [pair.P_value for pair in sorted_pairs]
-    adj_p_vals = multipletests(p_vals, method='fdr_bh')[1]
-    for pair, adj_p in zip(sorted_pairs, adj_p_vals):
-        pair.Adjusted_p = float(adj_p)
-
-    with open(gene_pairs_file, 'w') as f1, open(fisher_file, 'w') as f2:
-        gene_pairs_header = ['Gene1', 'Gene1Freq', 'Gene2', 'Gene2Freq',
-                             'PercofSamples', 'Co_Occurrence']
-        fisher_header = ['Gene1', 'Gene1Samples', 'Gene2', 'Gene2Samples',
-                         'Common', 'P_value', 'Adjusted_p']
-        gene_pairs_writer = csv.writer(f1, delimiter='\t')
-        fisher_writer = csv.writer(f2, delimiter='\t')
-        gene_pairs_writer.writerow(gene_pairs_header)
-        fisher_writer.writerow(fisher_header)
+    with open(gene_pairs_file, 'w') as f:
+        header = ['Gene1', 'Gene1Freq', 'Gene2', 'Gene2Freq',
+                  'PercofSamples', 'Co_Occurrence']
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(header)
+        sorted_pairs = sorted(pairs, key=lambda (p): p.Co_Occurrence, reverse=True)
         for pair in sorted_pairs:
-            gene_pairs_writer.writerow([pair[col] for col in gene_pairs_header])
+            writer.writerow([pair[col] for col in header])
+
+    with open(fisher_file, 'w') as f:
+        header = ['Gene1', 'Gene1Samples', 'Gene2', 'Gene2Samples',
+                  'Common', 'P_value', 'Adjusted_p']
+        writer = csv.writer(f, delimiter='\t')
+        writer.writerow(header)
+        sorted_pairs = sorted(pairs, key=lambda (p): p.P_value)
+        p_vals = [pair.P_value for pair in sorted_pairs]
+        adj_p_vals = multipletests(p_vals, method='fdr_bh')[1]
+        for pair, adj_p in zip(sorted_pairs, adj_p_vals):
+            pair.Adjusted_p = float(adj_p)
             if not alpha or pair.P_value < alpha:
-                fisher_writer.writerow(["{:.2E}".format(pair[col])
-                                        if type(pair[col]) is float else pair[col]
-                                        for col in fisher_header])
+                writer.writerow(["{:.2E}".format(pair[col])
+                                 if type(pair[col]) is float else pair[col]
+                                 for col in header])
 
 
 if __name__ == '__main__':
     genes_file = raw_input('Enter gene list (Sig43List/Sig200List/MoreThan2): ')
     alpha = float(raw_input('Enter alpha level (0 to include all results): '))
 
+    calc_fpath = CALC_OUT.format(genes_file)
     fname_append = ('{}_{}'.format(genes_file, str(alpha))
                     if alpha else genes_file)
-    calc_fpath = CALC_OUT.format(fname_append)
     fisher_fpath = FISHER_OUT.format(fname_append)
 
     # generate sample IDs
