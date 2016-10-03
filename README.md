@@ -6,8 +6,7 @@
 
 `cd /ufrc/zhou/share/projects/bioinformatics/gene-pairs`
 
-    $ . ve/bin/activate
-    $ python -u gene_pairs.py --list [GENE LIST] --alpha [ALPHA LVL]
+    $ ./run_hpc.sh --list [GENE LIST] --alpha [ALPHA LVL]
 
 ### Local
 
