@@ -1,3 +1,4 @@
+import argparse
 import os
 import csv
 import sys
@@ -203,8 +204,14 @@ def write_files(data, perc_dict_file, num_dict_file,
 
 
 if __name__ == '__main__':
-    genes_file = raw_input('Enter gene list (Sig43List/Sig200List/MoreThan2): ')
-    alpha = float(raw_input('Enter alpha level (0 to include all results): '))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-l', '--list',
+                        help='gene list (Sig43List/Sig200List/MoreThan2)')
+    parser.add_argument('-a', '--alpha',
+                        help='alpha level (0 to include all results)')
+    args = parser.parse_args()
+    genes_file = args.list
+    alpha = float(args.alpha) if args.alpha else 0
 
     calc_fpath = CALC_OUT.format(genes_file)
     fname_append = ('{}_{}'.format(genes_file, str(alpha))

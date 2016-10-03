@@ -2,14 +2,21 @@
 
 ## Quickstart
 
+### HPC
+
+`cd /ufrc/zhou/share/projects/bioinformatics/gene-pairs`
+
+    $ . ve/bin/activate
+    $ python -u gene_pairs.py --list [GENE LIST] --alpha [ALPHA LVL]
+
+### Local
+
     $ ./bootstrap.sh
-    $ python -u gene_pairs.py
-    Enter gene list (Sig43List/Sig200List/MoreThan2):
-    Enter alpha level (0 to include all results):
+    $ . ve/bin/activate
+    $ python -u gene_pairs.py --list [GENE LIST] --alpha [ALPHA LVL]
 
 ## Requirements
 
-* `numpy`
 * `scipy`
 * `statsmodels` (0.8.0rc1)
 
@@ -78,4 +85,6 @@ A two-sided Fisher's exact test is performed on the matrix:
 
 Gene pairs are ignored from calculation and output if they share no common samples.
 
-With the user-defined alpha level, significant rows are written to the 2 output files (based on `P_value`). If no alpha level is specified, all gene pairs with common samples will be written.
+All gene pairs with common samples are written to the first file, sorted by `Co-Occurrence`.
+
+With the user-defined alpha level, significant rows are written to the Fisher file (based on `P_value`). If no alpha level is specified, all gene pairs with common samples will be written.
