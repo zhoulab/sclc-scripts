@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import csv
 import sys
@@ -10,14 +11,12 @@ from statsmodels.sandbox.stats.multicomp import multipletests
 
 SAMPLES_FILE = 'data/samples.txt'
 GENE_NONSILENT = 'data/genenonsilent200.txt'
-
 PERC_DICT_FILE = 'data/PercDict.dic'
 NUM_DICT_FILE = 'data/GeneNumDict.dic'
 
 LISTS_DIR = 'GenePairsSig'
-OUT_DIR = 'results'
-CALC_OUT = os.path.join(OUT_DIR, 'GenePairs_{}.txt')
-FISHER_OUT = os.path.join(OUT_DIR, 'FisherGenePairs_{}.txt')
+CALC_OUT = 'results/GenePairs_{}.txt'
+FISHER_OUT = 'results/FisherGenePairs_{}.txt'
 
 
 class GenePair(object):
@@ -27,6 +26,57 @@ class GenePair(object):
 
     def __getitem__(self, attr):
         return getattr(self, attr)
+
+    def co_occurrence(self):
+        pass
+
+    def fisher(self, n):
+        arr = ([n - self.Gene1Samples - self.Gene2Samples + self.Common,
+                self.Gene2Samples - self.Common],
+               [self.Gene1Samples - self.Common,
+                self.Common])
+        self.P_value = stats.fisher_exact(arr)[1]
+
+
+class GenePairList(object):
+    def __init__(self, pairs):
+        self.pairs = pairs
+
+    def sort(self, attr, reverse=False):
+        self.pairs = sorted(self.pairs, key=lambda (p): p[attr],
+                            reverse=reverse)
+
+    def run_fisher(self, n, log=None, adjust=False):
+        if log:
+            log.info('{: <100}|'.format('Progress:'))
+        for i, pair in enumerate(self.pairs):
+            if log and i % (len(self.pairs) / 100) is 0:
+                sys.stdout.write('#')
+            pair.fisher(n=n)
+        if log:
+            print
+        if adjust:
+            self.adjust_p()
+
+    def adjust_p(self):
+        p_vals = [pair.P_value for pair in self.pairs]
+        adj_p_vals = multipletests(p_vals, method='fdr_bh')[1]
+        for pair, adj_p in zip(self.pairs, adj_p_vals):
+            pair.Adjusted_p = float(adj_p)
+
+    def write(self, fpath, header, sort_attr=None, reverse=False, alpha=None):
+        sorted_pairs = (sorted(self.pairs, key=lambda (p): p[sort_attr],
+                               reverse=reverse)
+                        if sort_attr else self.pairs)
+        with open(fpath, 'w') as f:
+            writer = csv.writer(f, delimiter='\t')
+            writer.writerow(header)
+            for pair in sorted_pairs:
+                if not alpha or pair.P_value < alpha:
+                    writer.writerow(["{:.2E}".format(pair[col])
+                                     if col in ['P_value', 'Adjusted_p']
+                                     else pair[col]
+                                     for col in header])
 
 
 def generate_sample_ids(fpath):
@@ -136,11 +186,10 @@ def get_num_dict(fpath):
                 if k != 'Gene'}
 
 
-def write_files(data, perc_dict_file, num_dict_file,
-                gene_pairs_file, fisher_file, alpha=None):
+def get_pairs(data, perc_dict_file, num_dict_file,
+              filter_common=True, log=None):
     """
-    Write final gene pairs file with header:
-    Gene1, Gene1Freq, Gene2, Gene2Freq, PercofSamples, Co-Occurrence
+    Return gene pairs with base attributes
 
     Parameters
     ----------
@@ -151,11 +200,10 @@ def write_files(data, perc_dict_file, num_dict_file,
     genes = sorted(set([g for g, s_id in data]))
     ids = sorted(set([s_id for g, s_id in data]))
 
-    pairs = set()
-    print '{: <100}|'.format('Progress:')
-    num_combinations = len(list(itertools.combinations(genes, 2)))
+    if log:
+        log.info('{: <100}|'.format('Progress:'))
     for i, (gene1, gene2) in enumerate(itertools.combinations(genes, 2)):
-        if i % (num_combinations / 100) is 0:
+        if log and i % (len(list(itertools.combinations(genes, 2))) / 100) is 0:
             sys.stdout.write('#')
         pair = GenePair(gene1, gene2)
         pair.Gene1Freq = perc_dict[gene1]
@@ -163,47 +211,38 @@ def write_files(data, perc_dict_file, num_dict_file,
         pair.Gene1Samples = num_dict[gene1]
         pair.Gene2Samples = num_dict[gene2]
         pair.Common = len(get_common_samples_between(data, gene1, gene2))
-        if pair.Common is 0:
+        if filter_common and pair.Common is 0:
             continue
-        pair.PercofSamples = 100.0 * pair.Common / len(ids)
-        pair.Co_Occurrence = 100.0 * pair.PercofSamples / (pair.Gene1Freq * pair.Gene2Freq)
+        pair.PercofSamples = (100.0 * pair.Common / len(ids))
+        pair.Co_Occurrence = (100.0 * pair.PercofSamples /
+                              (pair.Gene1Freq * pair.Gene2Freq))
+        yield pair
 
-        arr = ([228 - pair.Gene1Samples - pair.Gene2Samples + pair.Common,
-                pair.Gene2Samples - pair.Common],
-               [pair.Gene1Samples - pair.Common,
-                pair.Common])
-        __, p = stats.fisher_exact(arr)
-        pair.P_value = float(p)
 
-        pairs.add(pair)
-    print
+def write_files(pairs_list, gene_pairs_file, fisher_file, alpha=None):
+    """
+    Parameters
+    ----------
+    pairs_list : GenePairList
+    """
 
-    with open(gene_pairs_file, 'w') as f:
-        header = ['Gene1', 'Gene1Freq', 'Gene2', 'Gene2Freq',
-                  'PercofSamples', 'Co_Occurrence']
-        writer = csv.writer(f, delimiter='\t')
-        writer.writerow(header)
-        sorted_pairs = sorted(pairs, key=lambda (p): p.Co_Occurrence, reverse=True)
-        for pair in sorted_pairs:
-            writer.writerow([pair[col] for col in header])
+    pairs_list.write(gene_pairs_file,
+                     header=['Gene1', 'Gene1Freq', 'Gene2', 'Gene2Freq',
+                             'PercofSamples', 'Co_Occurrence'],
+                     sort_attr='Co_Occurrence', reverse=True)
 
-    with open(fisher_file, 'w') as f:
-        header = ['Gene1', 'Gene1Samples', 'Gene2', 'Gene2Samples',
-                  'Common', 'P_value', 'Adjusted_p']
-        writer = csv.writer(f, delimiter='\t')
-        writer.writerow(header)
-        sorted_pairs = sorted(pairs, key=lambda (p): p.P_value)
-        p_vals = [pair.P_value for pair in sorted_pairs]
-        adj_p_vals = multipletests(p_vals, method='fdr_bh')[1]
-        for pair, adj_p in zip(sorted_pairs, adj_p_vals):
-            pair.Adjusted_p = float(adj_p)
-            if not alpha or pair.P_value < alpha:
-                writer.writerow(["{:.2E}".format(pair[col])
-                                 if type(pair[col]) is float else pair[col]
-                                 for col in header])
+    pairs_list.write(fisher_file,
+                     header=['Gene1', 'Gene1Samples', 'Gene2', 'Gene2Samples',
+                             'Common', 'P_value', 'Adjusted_p'],
+                     sort_attr='P_value', alpha=alpha)
 
 
 if __name__ == '__main__':
+    log = logging.getLogger()
+    handler = logging.StreamHandler(stream=sys.stdout)
+    log.addHandler(handler)
+    log.setLevel(logging.DEBUG)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--list',
                         help='gene list (Sig43List/Sig200List/MoreThan2)')
@@ -218,18 +257,25 @@ if __name__ == '__main__':
                     if alpha else genes_file)
     fisher_fpath = FISHER_OUT.format(fname_append)
 
-    # generate sample IDs
+    log.debug('generating sample IDs')
     sample_ids = generate_sample_ids(SAMPLES_FILE)
 
-    # transform GENE_NONSILENT using sample IDs
+    log.debug('transforming GENE_NONSILENT using sample IDs')
     transform_data = get_transform_nonsilent(GENE_NONSILENT, sample_ids)
 
-    # transform GENE_NONSILENT using sample IDs, filter for sig genes
-    sig_genes = get_lines_from_file(os.path.join(LISTS_DIR, genes_file + '.txt'))
-    genes = get_transform_nonsilent(GENE_NONSILENT, sample_ids,
-                                    sig_genes=sig_genes)
-    two_perc_genes_set = sorted(set(genes), key=lambda (k, v): (k, v))
+    log.debug('transforming GENE_NONSILENT using sample IDs, filter for sig genes')
+    genes = get_lines_from_file(os.path.join(LISTS_DIR, genes_file + '.txt'))
+    genes_samples = get_transform_nonsilent(GENE_NONSILENT, sample_ids,
+                                            sig_genes=genes)
+    gs_set = set(genes_samples)
+    log.debug('creating GenePairList')
+    pairs_list = GenePairList(list(get_pairs(gs_set, PERC_DICT_FILE, NUM_DICT_FILE,
+                                             log=log)))
+    print
 
-    write_files(two_perc_genes_set, PERC_DICT_FILE, NUM_DICT_FILE,
-                calc_fpath, fisher_fpath, alpha=alpha)
-    print('Done. Result files:\n{}\n{}'.format(calc_fpath, fisher_fpath))
+    log.debug('running Fisher tests')
+    pairs_list.run_fisher(n=228, log=log, adjust=True)
+
+    log.debug('writing files')
+    write_files(pairs_list, calc_fpath, fisher_fpath, alpha=alpha)
+    log.debug('Done. Result files:\n{}\n{}'.format(calc_fpath, fisher_fpath))
