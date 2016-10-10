@@ -28,15 +28,6 @@ class GenePair(object):
     def co_occurrence(self):
         pass
 
-    def fisher(self, n):
-        import scipy.stats as stats
-
-        arr = ([n - self.Gene1Samples - self.Gene2Samples + self.Common,
-                self.Gene2Samples - self.Common],
-               [self.Gene1Samples - self.Common,
-                self.Common])
-        self.P_value = stats.fisher_exact(arr)[1]
-
 
 class GenePairList(object):
     def __init__(self, pairs):
@@ -45,26 +36,6 @@ class GenePairList(object):
     def sort(self, attr, reverse=False):
         self.pairs = sorted(self.pairs, key=lambda (p): p[attr],
                             reverse=reverse)
-
-    def run_fisher(self, n, log=None, adjust=False):
-        if log:
-            log.info('{: <100}|'.format('Progress:'))
-        for i, pair in enumerate(self.pairs):
-            if log and i % (len(self.pairs) / 100) is 0:
-                sys.stdout.write('#')
-            pair.fisher(n=n)
-        if log:
-            print
-        if adjust:
-            self.adjust_p()
-
-    def adjust_p(self):
-        from statsmodels.sandbox.stats.multicomp import multipletests
-
-        p_vals = [pair.P_value for pair in self.pairs]
-        adj_p_vals = multipletests(p_vals, method='fdr_bh')[1]
-        for pair, adj_p in zip(self.pairs, adj_p_vals):
-            pair.Adjusted_p = float(adj_p)
 
     def write(self, fpath, header, sort_attr=None, reverse=False, alpha=None):
         sorted_pairs = (sorted(self.pairs, key=lambda (p): p[sort_attr],
@@ -237,8 +208,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--list',
                         help='gene list (Sig43List/Sig200List/MoreThan2)')
-    # parser.add_argument('-a', '--alpha',
-    #                     help='alpha level (0 to include all results)')
     parser.add_argument('--calc_out',
                         help='Output filename')
     parser.add_argument('--num_out',
@@ -247,7 +216,6 @@ def main():
                         help='Filter common')
     args = parser.parse_args()
     genes_file = args.list
-    # alpha = float(args.alpha) if args.alpha else 0
 
     log.debug('generating sample objects')
     sample_objs = generate_samples(SAMPLES_FILE)
