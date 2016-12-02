@@ -1,0 +1,29 @@
+Folder - ZhouLab_Folder/Projects/Oncogenomics/SCLC/Data/Umemura/Kouya Shiraishi - SCLC_vcf/SCLC_vcf 
+
+SCLC.muTect.vcf file transformation - 
+
+Input file columns - 
+
+CHROM	POS	ID	REF	ALT	QUAL	FILTER INFO	FORMAT	PATIENT
+
+The samples (patients) containing a mutation in a specific position (each row) are depicted with a group of numbers like 0/1:25,8:30:33:0.242:2 and the rest are filled with ./.:.:.:.:.:.
+
+Desired output file columns - 
+
+Header = "chr"+'\t'+"start"+'\t'+"end"+'\t'+"ref_allele"+'\t'+"alt_allele"+'\t'+"patient"+'\n'
+Body = CHROM	POS ID	POS ID	REF	ALT	PATIENT
+
+Note: Ignore the lines starting with ##
+
+Output - 
+
+SCLC.muTect.vcf
+
+Eg. Input line - 
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	M153T	M189T	M288T	SM09_002T	SM09_016T	SM09-001T	SM09-003T	SM09-004T	SM09-005_tumor	SM09-006_tumor	SM09-007T	SM09-008T	SM09-010T	SM09-012T	SM09-013T	SM09-014T	SM09-015T	SM09-017_tumor	SM09-018_tumor	SM09-019_tumor	SM09-020_tumor	11169T	12878T	19100T	SBM_T04	SBM_T08	SBM_T17	SBM_T37	SBM_T40	THB_Lu_1T	THB_Lu_2T	THB_Lu_3T	THB_Lu_4T	THB_Lu_5T	1581M	1582M	1591T	1592M	1594M	1595M	1601T	1602M	SM09-011T1	SM09-011T2
+
+chr1	14728	.	C	A	.	PASS	SOMATIC;VT=SNP;AC=2;AN=4	GT:AD:BQ:DP:FA:SS	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	./.:.:.:.:.:.	0/1:30,20:29:50:0.4:2	0/1:56,25:28:81:0.309:2	./.:.:.:.:.:.	./.:.:.:.:.:.
+
+Output line format - 
+chr1	14728	14728	C	A	1601T	
+chr1	14728	14728	C	A	1602M
