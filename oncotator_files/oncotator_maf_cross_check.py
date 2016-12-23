@@ -27,7 +27,7 @@ df1 = get_tsv_df(FILE1, low_memory=False)
 df2 = get_tsv_df(FILE2, low_memory=False)
 
 # assert same number of rows
-assert len(df1) is len(df2)
+assert len(df1) == len(df2), 'Number of rows are different.'
 
 # group by key columns
 df1_groups = df1.groupby(KEY_COLS)
