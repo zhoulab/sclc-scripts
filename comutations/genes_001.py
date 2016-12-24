@@ -1,4 +1,4 @@
-import os
+import argparse
 import csv
 import itertools
 import math
@@ -8,19 +8,10 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 from collections import OrderedDict
 
-BASE_DIR = os.path.dirname(os.getcwd())
 
-OUTPUT_DIRECTORY = os.path.join(BASE_DIR, 'results')
-if not os.path.exists(OUTPUT_DIRECTORY):
-    os.makedirs(OUTPUT_DIRECTORY)
-
-GENE_MUT_FILE = os.path.join(BASE_DIR, 'data/genenonsilent200.txt')
-SIG_GENES_FILE = os.path.join(BASE_DIR, 'data/SigGenes_001.txt')
-MUT_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_plot_001.jpg')
-SAMPLE_ID_OUT = os.path.join(BASE_DIR, 'results/SampleIDs.txt')
-# MUT_TYPES_PLOT_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_type_plot_001.jpg')
-# MUT_TYPE_FILES = [os.path.join(BASE_DIR, 'data/Peifer2columns.txt'),
-#                   os.path.join(BASE_DIR, 'data/Rudin_59samples.txt')]
+# MUT_PLOT_2_DEST = os.path.join(BASE_DIR, 'results/SCLC_comut_type_plot_001.jpg')
+# MUT_PLOT_2_FILES = [os.path.join(BASE_DIR, 'data/Peifer2columns.txt'),
+#                     os.path.join(BASE_DIR, 'data/Rudin_59samples.txt')]
 
 
 def get_gene_pvals(fpath):
@@ -134,8 +125,8 @@ def get_gene_mut_types(files, sig_genes_file):
     return genes_info
 
 
-def generate_mut_type_plot(fpaths, save_file, sig_genes_file, ignore=None):
-    """
+def generate_mut_plot_2(fpaths, save_file, sig_genes_file, ignore=None):
+    """Generate JPEG of mutation plot.
     Parameters
     ----------
     save_file : filepath to save plot JPEG
@@ -214,7 +205,8 @@ def generate_mut_type_plot(fpaths, save_file, sig_genes_file, ignore=None):
 
 def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
                       sample_ids_dest=None, p_val=True, percent_graph=True):
-    """
+    """Generate JPEG of mutation type plot.
+
     Parameters
     ----------
     save_file : filepath to save plot JPEG
@@ -374,5 +366,15 @@ def get_spaced_colors(n):
 
 
 if __name__ == "__main__":
-    generate_mut_plot(MUT_PLOT_DEST, GENE_MUT_FILE, SIG_GENES_FILE,
-                      sample_ids_dest=SAMPLE_ID_OUT)
+    parser = argparse.ArgumentParser(description='Generate comutation plots')
+    parser.add_argument('--sig_genes', required=True,
+                        help='sig genes file')
+    parser.add_argument('--gene_mut_file', required=True,
+                        help='sig genes file')
+    parser.add_argument('-o', '--output', required=True,
+                        help='output JPEG filepath')
+    parser.add_argument('--sample_id_out', required=False,
+                        help='output JPEG filepath')
+    args = parser.parse_args()
+    generate_mut_plot(args.output, args.gene_mut_file, args.sig_genes,
+                      sample_ids_dest=args.sample_id_out)
