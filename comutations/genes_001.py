@@ -15,18 +15,20 @@ from collections import OrderedDict
 #                     os.path.join(BASE_DIR, 'data/Rudin_59samples.txt')]
 
 
-def get_gene_pvals(fpath):
-    """Return dictionary for gene p-values from `fpath`
+def get_gene_pvals(sig_genes_file):
+    """Return dictionary for gene p-values from `sig_genes_file`
 
     Return
     ------
     dict : {gene: p-val}
     """
-    with open(fpath, 'rU') as genes:
-        reader = csv.reader(genes, delimiter='\t', dialect=csv.excel_tab)
-        reader.next()  # ignore header
-        return {line[0]: float(line[13])
-                for line in reader}
+    with open(sig_genes_file, 'rU') as f:
+        dialect = csv.Sniffer().sniff(f.read(1024))
+        f.seek(0)
+        reader = csv.reader(f, delimiter='\t', dialect=dialect)
+        col = reader.next().index('p')  # find column index and ignore header
+        return {row[0]: float(row[col])
+                for row in reader}
 
 
 def create_proxy(color):
