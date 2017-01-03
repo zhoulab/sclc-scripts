@@ -1,6 +1,7 @@
 import argparse
 import csv
 import itertools
+import warnings
 import math
 import matplotlib
 matplotlib.use('PDF')
@@ -65,8 +66,11 @@ def get_gene_muts(gene_mut_file, sig_genes_file):
     genes_info = {}
     with open(gene_mut_file) as f:
         reader = csv.reader(f, delimiter='\t')
-        for row in reader:
-            if row[0] in all_genes_info:
+        for i, row in enumerate(reader):
+            if not row:
+                warnings.warn('Samples file: line {} is empty'.format(i + 1),
+                              stacklevel=2)
+            elif row[0] in all_genes_info:
                 if row[0] not in genes_info:
                     genes_info[row[0]] = {}
                     genes_info[row[0]]['p'] = all_genes_info[row[0]]
