@@ -204,18 +204,24 @@ def generate_mut_plot_2(fpaths, save_file, sig_genes_file, ignore=None):
     plt.savefig(save_file)
 
 
-def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
-                      sample_ids_dest=None, p_val=True, percent_graph=True):
+def generate_mut_plot(sig_genes_file, gene_mut_file, output,
+                      sample_id_output, show_p_values, show_percent_graph):
     """Generate PDF of mutation type plot.
 
     Parameters
     ----------
-    save_file : filepath to save plot PDF
-    sample_ids_dest : optional filepath to save sample IDs
-                      in the format (id, name)
-    p_val : optional generate p-value graph [-log(p)]
-    percent_graph : optional generate stacked bar graph
-                    for mutation distributions
+    sig_genes_file : filepath
+        filepath for TSV file of significant genes
+    gene_mut_file : filepath
+        filepath for TSV file of gene mutation information
+    output : filepath
+        plot PDF destination
+    sample_id_output : filepath
+        optional filepath to save sample IDs in the format (id, name)
+    show_p_values : boolean
+        optional generate p-value graph [-log(p)]
+    show_percent_graph : boolean
+        optional generate stacked bar graph for mutation distributions
     """
     genes_info = get_gene_muts(gene_mut_file, sig_genes_file)
 
@@ -226,8 +232,8 @@ def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
     for gene in list(reversed(genes_list)):
         samples = sorted(samples, key=lambda mut: mut not in genes_info[gene])
     sample_nums = [(i + 1, s) for i, s in enumerate(samples)]
-    if sample_ids_dest:
-        with open(sample_ids_dest, 'w') as id_file:
+    if sample_id_output:
+        with open(sample_id_output, 'w') as id_file:
             fwriter = csv.writer(id_file, delimiter='\t')
             for sample_info in sample_nums:
                 fwriter.writerow(sample_info)
@@ -277,7 +283,7 @@ def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
     ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
     # -log(p)
-    if p_val:
+    if show_p_values:
         ax2 = fig.add_subplot(133)
         y_pos = range(len(genes_list))
         neg_log_p = [math.log(genes_info[gene]['p']) * -1
@@ -292,7 +298,7 @@ def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
         ax2.set_ylim([0, len(genes_list)])
 
     # stacked bars
-    if percent_graph:
+    if show_percent_graph:
         ax3 = fig.add_subplot(131)
         mut_summary = {}
         for gene in genes_list:
@@ -325,7 +331,7 @@ def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
         ax3.get_xaxis().set_tick_params(direction='out')
 
     # adjust box positions
-    if p_val and percent_graph:
+    if show_p_values and show_percent_graph:
         box3 = ax3.get_position()
         ax3.set_position([box3.x0, box3.y0 + box3.height * 0.5,
                           box3.width * 0.2, box3.height * 0.5])
@@ -346,7 +352,7 @@ def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
         ax1.set_position([box.x0, box.y0 + box.height * 0.25,
                           box.width, box.height * 0.5])
 
-    plt.savefig(save_file)
+    plt.savefig(output)
 
 
 def get_fixed_colors(n):
@@ -368,14 +374,17 @@ def get_spaced_colors(n):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate comutation plots')
-    parser.add_argument('--sig_genes', required=True,
-                        help='sig genes file')
+    parser.add_argument('--sig_genes_file', required=True,
+                        help='TSV file of significant genes')
     parser.add_argument('--gene_mut_file', required=True,
-                        help='sig genes file')
+                        help='TSV file of gene mutation information')
     parser.add_argument('-o', '--output', required=True,
                         help='output PDF filepath')
-    parser.add_argument('--sample_id_out', required=False,
-                        help='output PDF filepath')
+    parser.add_argument('--sample_id_output', required=False,
+                        help='output sample ID filepath')
+    parser.add_argument('--show_p_values', action='store_true',
+                        help='option to show p-values')
+    parser.add_argument('--show_percent_graph', action='store_true',
+                        help='option to show percentage distribution graph')
     args = parser.parse_args()
-    generate_mut_plot(args.output, args.gene_mut_file, args.sig_genes,
-                      sample_ids_dest=args.sample_id_out)
+    generate_mut_plot(**args.__dict__)

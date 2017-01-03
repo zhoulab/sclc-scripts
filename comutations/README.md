@@ -17,3 +17,5 @@ Mutation types:
 * A:T transitions
 * A:T transversions
 * null+indel mutations
+
+More information: `python genes_001.py --help`
