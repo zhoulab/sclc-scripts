@@ -3,6 +3,7 @@ import csv
 import itertools
 import math
 import matplotlib
+matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
@@ -126,10 +127,10 @@ def get_gene_mut_types(files, sig_genes_file):
 
 
 def generate_mut_plot_2(fpaths, save_file, sig_genes_file, ignore=None):
-    """Generate JPEG of mutation plot.
+    """Generate PDF of mutation plot.
     Parameters
     ----------
-    save_file : filepath to save plot JPEG
+    save_file : filepath to save plot PDF
     ignore : list of mutation types to ignore
 
     Variables
@@ -205,11 +206,11 @@ def generate_mut_plot_2(fpaths, save_file, sig_genes_file, ignore=None):
 
 def generate_mut_plot(save_file, gene_mut_file, sig_genes_file,
                       sample_ids_dest=None, p_val=True, percent_graph=True):
-    """Generate JPEG of mutation type plot.
+    """Generate PDF of mutation type plot.
 
     Parameters
     ----------
-    save_file : filepath to save plot JPEG
+    save_file : filepath to save plot PDF
     sample_ids_dest : optional filepath to save sample IDs
                       in the format (id, name)
     p_val : optional generate p-value graph [-log(p)]
@@ -372,9 +373,9 @@ if __name__ == "__main__":
     parser.add_argument('--gene_mut_file', required=True,
                         help='sig genes file')
     parser.add_argument('-o', '--output', required=True,
-                        help='output JPEG filepath')
+                        help='output PDF filepath')
     parser.add_argument('--sample_id_out', required=False,
-                        help='output JPEG filepath')
+                        help='output PDF filepath')
     args = parser.parse_args()
     generate_mut_plot(args.output, args.gene_mut_file, args.sig_genes,
                       sample_ids_dest=args.sample_id_out)
