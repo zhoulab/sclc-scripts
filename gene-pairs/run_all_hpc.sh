@@ -21,7 +21,7 @@ fisher_file="FisherGenePairs_${gene_list}.txt"
 fisher_file_filtered="FisherGenePairs_${gene_list}_${alpha}.txt"
 
 py_cmd="python -u gene_pairs.py -g $gene_data -l $gene_list --calc_out $calc_file --num_out $num_file"
-result_dir="results/$gene_list"
+result_dir="../results/$gene_list"
 if [ "$filter" = true ]; then
     py_cmd="$py_cmd --filter_common"
     result_dir="${result_dir}_removed_common"
