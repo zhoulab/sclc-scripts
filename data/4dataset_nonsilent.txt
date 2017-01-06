@@ -2337,7 +2337,6 @@ DMP1	1592M	nonsilent	4
 DMP1	1594M	nonsilent	4
 DMP1	1595M	nonsilent	4
 DMP1	M288T	nonsilent	4
-
 PKD2	SM09-012T	nonsilent	4
 TIGD2	SM09-020_tumor	nonsilent	4
 MMRN1	SBM_T04	nonsilent	3
@@ -3213,7 +3212,6 @@ UBE3D	1591T	nonsilent	5
 UBE3D	1592M	nonsilent	5
 UBE3D	1594M	nonsilent	5
 UBE3D	1595M	nonsilent	5
-
 DOPEY1	12878T	nonsilent	4
 PGM3	1591T	nonsilent	4
 PGM3	1592M	nonsilent	4
@@ -5858,7 +5856,6 @@ KRT5	SM09_002T	nonsilent	6
 KRT71	SM09-003T	nonsilent	4
 KRT73	THB_Lu_3T	nonsilent	4
 SPRYD3	SBM_T08	nonsilent	6
-
 SOAT2	SBM_T08	nonsilent	4
 ESPL1	SM09-010T	nonsilent	6
 ESPL1	THB_Lu_3T	nonsilent	4
@@ -6731,7 +6728,6 @@ PTPN9	SBM_T08	nonsilent	4
 SNX33	SBM_T08	nonsilent	4
 SNX33	SM09-001T	nonsilent	6
 CSPG4	SM09-001T	nonsilent	4
-
 ODF3L1	SBM_T08	nonsilent	4
 PEAK1	SM09-011T2	nonsilent	4
 ADAMTS7	1592M	nonsilent	3
