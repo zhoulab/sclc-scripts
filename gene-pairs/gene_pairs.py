@@ -50,6 +50,17 @@ def get_lines_from_file(fpath):
         return [line.rstrip() for line in file]
 
 
+def get_unique_samples(simple_maf_file):
+    """Return set of patient IDs from a TSV file.
+
+    Assume column 2 to be the patient column.
+    """
+    with open(simple_maf_file) as f:
+        reader = csv.reader(f, delimiter='\t')
+        patients = set([row[1] for row in reader])
+    return patients
+
+
 def get_common_samples(count_data, samples, gene1, gene2):
     """Return set of samples which contain both `gene1` and `gene2`"""
     for sample in samples:
@@ -164,7 +175,7 @@ def main(args):
                           sig_genes=sig_genes, log=log,
                           filter_common=args.filter_common)
     elif args.percent_threshold:
-        log.info('Filtering for sig genes using threshold=%f...',
+        log.info('Filtering for sig genes using threshold=%i...',
                  args.percent_threshold)
         pairs = get_pairs(args.maf_file,
                           percent_threshold=args.percent_threshold, log=log,

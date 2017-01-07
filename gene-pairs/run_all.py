@@ -3,7 +3,7 @@ import argparse
 import os
 import subprocess
 
-from gene_pairs import main as generate_gene_pair_files
+from gene_pairs import get_unique_samples, main as generate_gene_pair_files
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', '--maf_file', required=True,
@@ -49,5 +49,6 @@ generate_gene_pair_files(args)
 subprocess.call(['Rscript', 'gene_pairs_fisher.R',
                  '-f', num_file,
                  '-a', args.alpha,
+                 '-n', str(len(get_unique_samples(args.maf_file))),
                  '--out_all', fisher_file,
                  '--out_filtered', fisher_file_filtered])

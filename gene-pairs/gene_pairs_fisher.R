@@ -9,7 +9,9 @@ option_list = list(
     make_option("--out_filtered", type="character", default="out_filtered.txt",
                 help="output file name [default= %default]", metavar="character"),
     make_option(c("-a", "--alpha"), type="double", default=NULL,
-                help="alpha level", metavar="character")
+                help="alpha level", metavar="character"),
+    make_option(c("-n", "--num_samples"), type="integer", default=NULL,
+                help="number of samples", metavar="character")
 );
 
 opt_parser = OptionParser(option_list=option_list);
@@ -27,7 +29,7 @@ get_fisher <- function(df) {
     n4 <- as.numeric(df["Common"])
     n2 <- as.numeric(df["Gene2Samples"]) - n4
     n3 <- as.numeric(df["Gene1Samples"]) - n4
-    n1 <- 228 - (n2 + n3 + n4)
+    n1 <- args$num_samples - (n2 + n3 + n4)
     mat <- matrix(c(n1,n2,n3,n4), ncol=2)
     f <- fisher.test(mat)
     return(f$p.value)
