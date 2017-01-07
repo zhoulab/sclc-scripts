@@ -127,7 +127,7 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
         yield pair
 
 
-def main():
+def main(args):
     log = logging.getLogger()
     handler = StreamHandler(stream=sys.stdout)
     formatter = Formatter(fmt='%(asctime)-15s %(levelname)-6s %(message)s')
@@ -135,27 +135,28 @@ def main():
     log.addHandler(handler)
     log.setLevel(logging.DEBUG)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--maf_file', required=True,
-                        help='MAF file with columns gene/patient/effect/categ')
-    parser.add_argument('-l', '--sig_genes_list',
-                        help='file of significant genes')
-    parser.add_argument('-p', '--percent_threshold', type=float,
-                        help='threshold for patients count / total count')
-    parser.add_argument('--calc_out', required=True,
-                        help='Output filename')
-    parser.add_argument('--num_out', required=True,
-                        help='Output filename')
-    parser.add_argument('--filter_common', action='store_true',
-                        help='Filter common')
-    args = parser.parse_args()
+    if not args:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-i', '--maf_file', required=True,
+                            help='MAF file with columns gene/patient/effect/categ')
+        parser.add_argument('-l', '--sig_genes_list',
+                            help='file of significant genes')
+        parser.add_argument('-p', '--percent_threshold', type=int,
+                            help='threshold for patients count / total count')
+        parser.add_argument('--calc_out', required=True,
+                            help='Output filename')
+        parser.add_argument('--num_out', required=True,
+                            help='Output filename')
+        parser.add_argument('--filter_common', action='store_true',
+                            help='Filter common')
+        args = parser.parse_args()
 
     if args.sig_genes_list and args.percent_threshold:
         raise Exception('Cannot accept both a gene list '
                         'and percent threshold.')
     if not any([args.sig_genes_list, args.percent_threshold]):
         raise Exception('Required: either a gene list '
-                        'and percent threshold.')
+                        'or percent threshold.')
     elif args.sig_genes_list:
         log.info('Filtering for sig genes from %s...', args.sig_genes_list)
         sig_genes = get_lines_from_file(args.sig_genes_list)
