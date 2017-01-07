@@ -44,10 +44,13 @@ class GenePairList(object):
                                      for col in header])
 
 
-def get_lines_from_file(fpath):
-    """Return list of lines in a file without newline char"""
-    with open(fpath) as file:
-        return [line.rstrip() for line in file]
+def get_mutsig_genes(mutsig_genes_file_file):
+    """Return iterable of genes from MutSig genes output file"""
+    with open(mutsig_genes_file_file) as f:
+        reader = csv.reader(f, delimiter='\t')
+        col = reader.next().index('gene')
+        for row in reader:
+            yield row[col]
 
 
 def get_unique_samples(simple_maf_file):
@@ -150,8 +153,8 @@ def main(args):
         parser = argparse.ArgumentParser()
         parser.add_argument('-i', '--maf_file', required=True,
                             help='MAF file with columns gene/patient/effect/categ')
-        parser.add_argument('-l', '--sig_genes_list',
-                            help='file of significant genes')
+        parser.add_argument('--mutsig_genes_file',
+                            help='MutSig genes output file')
         parser.add_argument('-p', '--percent_threshold', type=int,
                             help='threshold for patients count / total count')
         parser.add_argument('--calc_out', required=True,
@@ -162,15 +165,15 @@ def main(args):
                             help='Filter common')
         args = parser.parse_args()
 
-    if args.sig_genes_list and args.percent_threshold:
-        raise Exception('Cannot accept both a gene list '
+    if args.mutsig_genes_file and args.percent_threshold:
+        raise Exception('Cannot accept both a MutSig output file '
                         'and percent threshold.')
-    if not any([args.sig_genes_list, args.percent_threshold]):
-        raise Exception('Required: either a gene list '
+    if not any([args.mutsig_genes_file, args.percent_threshold]):
+        raise Exception('Required: either a MutSig output file '
                         'or percent threshold.')
-    elif args.sig_genes_list:
-        log.info('Filtering for sig genes from %s...', args.sig_genes_list)
-        sig_genes = get_lines_from_file(args.sig_genes_list)
+    elif args.mutsig_genes_file:
+        log.info('Filtering for sig genes from %s...', args.mutsig_genes_file)
+        sig_genes = get_mutsig_genes(args.mutsig_genes_file)
         pairs = get_pairs(args.maf_file,
                           sig_genes=sig_genes, log=log,
                           filter_common=args.filter_common)

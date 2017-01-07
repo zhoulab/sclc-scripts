@@ -34,14 +34,14 @@ def get_spaced_colors(n):
             for i in range(0, max_value, interval)][:-1]
 
 
-def get_sig_gene_pvals(sig_genes_file):
-    """Return dictionary for gene p-values from `sig_genes_file`
+def get_mutsig_gene_pvals(mutsig_genes_file):
+    """Return dictionary for gene p-values from `mutsig_genes_file`
 
     Return
     ------
     dict : { gene (str) : p-value (float) }
     """
-    with open(sig_genes_file, 'rU') as f:
+    with open(mutsig_genes_file, 'rU') as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
         f.seek(0)
         reader = csv.reader(f, delimiter='\t', dialect=dialect)
@@ -50,7 +50,7 @@ def get_sig_gene_pvals(sig_genes_file):
                 for row in reader}
 
 
-def get_gene_muts(gene_mut_file, sig_genes_file):
+def get_gene_muts(gene_mut_file, mutsig_genes_file):
     """
     Return
     ------
@@ -62,7 +62,7 @@ def get_gene_muts(gene_mut_file, sig_genes_file):
                }
     }
     """
-    all_genes_info = get_sig_gene_pvals(sig_genes_file)
+    all_genes_info = get_mutsig_gene_pvals(mutsig_genes_file)
     genes_info = {}
     with open(gene_mut_file) as f:
         reader = csv.reader(f, delimiter='\t')
@@ -78,14 +78,14 @@ def get_gene_muts(gene_mut_file, sig_genes_file):
     return genes_info
 
 
-def generate_mut_plot(sig_genes_file, gene_mut_file, output,
+def generate_mut_plot(mutsig_genes_file, gene_mut_file, output,
                       sample_id_output, show_p_values, show_percent_graph):
     """Generate PDF of mutation type plot.
 
     Parameters
     ----------
-    sig_genes_file : filepath
-        filepath for TSV file of significant genes
+    mutsig_genes_file : filepath
+        filepath for MutSig genes file
     gene_mut_file : filepath
         filepath for TSV file of gene mutation information
     output : filepath
@@ -97,7 +97,7 @@ def generate_mut_plot(sig_genes_file, gene_mut_file, output,
     show_percent_graph : boolean
         optional generate stacked bar graph for mutation distributions
     """
-    genes_info = get_gene_muts(gene_mut_file, sig_genes_file)
+    genes_info = get_gene_muts(gene_mut_file, mutsig_genes_file)
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
     samples = list(set(itertools.chain(*[genes_info[key].keys()
@@ -231,8 +231,8 @@ def generate_mut_plot(sig_genes_file, gene_mut_file, output,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate comutation plots')
-    parser.add_argument('--sig_genes_file', required=True,
-                        help='TSV file of significant genes')
+    parser.add_argument('--mutsig_genes_file', required=True,
+                        help='MutSig genes output file')
     parser.add_argument('--gene_mut_file', required=True,
                         help='TSV file of gene mutation information')
     parser.add_argument('-o', '--output', required=True,
