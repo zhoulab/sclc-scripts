@@ -9,14 +9,6 @@ import itertools
 from logging import StreamHandler, Formatter
 
 
-SAMPLES_FILE = 'data/samples.txt'
-GENE_NONSILENT = 'data/genenonsilent200.txt'
-PERC_DICT_FILE = 'data/PercDict.dic'
-NUM_DICT_FILE = 'data/GeneNumDict.dic'
-
-LISTS_DIR = 'GenePairsSig'
-
-
 class GenePair(object):
     def __init__(self, gene1, gene2):
         self.Gene1 = gene1
@@ -52,107 +44,20 @@ class GenePairList(object):
                                      for col in header])
 
 
-class Sample(object):
-    def __init__(self, name):
-        self.name = name
-        self.genes = set()
-
-    def has_gene(self, gene):
-        return gene in self.genes
-
-
-    def __getitem__(self, name):
-        return self.samples[name]
-
-
 def get_lines_from_file(fpath):
     """Return list of lines in a file without newline char"""
     with open(fpath) as file:
         return [line.rstrip() for line in file]
 
 
-def generate_samples(fpath):
-    """
-    Return dict of Sample objects from `fpath`
-    """
-    with open(fpath) as file:
-        return {line.strip(): Sample(line.strip()) for line in file}
+def get_common_samples(count_data, samples, gene1, gene2):
+    """Return set of samples which contain both `gene1` and `gene2`"""
+    for sample in samples:
+        if count_data[gene1][sample] and count_data[gene2][sample]:
+            yield sample
 
 
-def populate_sample_genes(fpath, sample_objs, sig_genes=None):
-    """Add genes to sample based on `fpath`
-    Assumed file columns: [gene, sample name, ...]
-
-    Parameters
-    ---------
-    fpath : filepath
-        line[0] : gene name
-        line[1] : sample name
-    sample_objs : dict of Sample objects
-        {name: Sample(name)}
-    sig_genes : list of str
-        genes to filter for
-    """
-    with open(fpath) as file:
-        reader = csv.reader(file, delimiter='\t')
-        for line in reader:
-            if sig_genes:
-                if line[0] in sig_genes:
-                    sample_objs[line[1]].genes.add(line[0])
-            else:
-                sample_objs[line[1]].genes.add(line[0])
-
-
-def get_samples_with_gene(sample_objs, gene):
-    """Yield iterable of sample names with `gene`
-
-    Parameters
-    ----------
-    sample_objs : dict of Sample objects
-    gene : str
-    """
-    for sample in sample_objs.values():
-        if sample.has_gene(gene):
-            yield sample.name
-
-
-def get_common_samples(sample_objs, gene1, gene2):
-    """Return set of samples which contain both `gene1` and `gene2`
-
-    Parameters
-    ----------
-    sample_objs : dict of Sample objects
-    gene1 : str
-    gene2 : str
-    """
-    gene1_samples = set(get_samples_with_gene(sample_objs, gene1))
-    gene2_samples = set(get_samples_with_gene(sample_objs, gene2))
-    return gene1_samples & gene2_samples
-
-
-def get_perc_dict(fpath):
-    """Return dict from `fpath` using pickle.load()
-
-    Convert percentages to floats,
-    ignore the one case of {'Gene': 'Perc'}
-    """
-    with open(fpath) as f:
-        return {k: float(v) for k, v in pickle.load(f).items()
-                if k != 'Gene'}
-
-
-def get_num_dict(fpath):
-    """Return dict from `fpath` using pickle.load()
-
-    Convert percentages to ints,
-    ignore the one case of {'Gene': 'Perc'}
-    """
-    with open(fpath) as f:
-        return {k: int(v) for k, v in pickle.load(f).items()
-                if k != 'Gene'}
-
-
-def get_pairs(sample_objs, perc_dict_file, num_dict_file,
+def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
               filter_common=False, log=None):
     """
     Return GenePair objects with base attriutes:
@@ -166,32 +71,57 @@ def get_pairs(sample_objs, perc_dict_file, num_dict_file,
 
     Parameters
     ----------
-    sample_objs : dict of Sample objects
-    perc_dict_file : filepath
-    num_dict_file : filepath
     filter_common : filter out common samples
     log : Logger object
+
+    Variables
+    ---------
+    count_data
+    {
+        gene : {
+                    patient : count
+               }
+    }
     """
-    log = log or logging.getLogger('dummy')
-    perc_dict = get_perc_dict(perc_dict_file)
-    num_dict = get_num_dict(num_dict_file)
-    genes = sorted(set.union(*[sample.genes
-                               for sample in sample_objs.values()]))
-    num_pairs = len(list(itertools.combinations(genes, 2)))
+    # get count data
+    with open(maf_file) as f:
+        reader = list(csv.reader(f, delimiter='\t'))
+    genes = set([row[0] for row in reader])
+    patients = set([row[1] for row in reader])
+    count_data = {gene: {patient: 0 for patient in patients}
+                  for gene in genes}
+    for row in reader:
+        count_data[row[0]][row[1]] += 1
+    # create dictionaries
+    gene_counts = {gene: sum([int(bool(count))
+                              for patient, count in count_data[gene].items()])
+                   for gene in genes}
+    gene_percentages = {gene: (100.0 * count / len(patients))
+                        for gene, count in gene_counts.items()}
+
+    if not sig_genes:
+        sig_genes = [gene for gene in genes
+                     if gene_percentages[gene] > percent_threshold]
+
+    iter_pairs = list(itertools.combinations(sorted(sig_genes), 2))
+    num_pairs = len(list(iter_pairs))
     log.info('analyzing %i pairs', num_pairs)
     log.info('\n{: <100}|'.format('PROGRESS:'))
-    for i, (gene1, gene2) in enumerate(itertools.combinations(genes, 2)):
-        if log and i % (num_pairs / 100) is 0:
+    for i, (gene1, gene2) in enumerate(iter_pairs):
+        if i % (num_pairs / 100) == 0:
             sys.stdout.write('#')
         pair = GenePair(gene1, gene2)
-        pair.Gene1Freq = perc_dict[gene1]
-        pair.Gene2Freq = perc_dict[gene2]
-        pair.Gene1Samples = num_dict[gene1]
-        pair.Gene2Samples = num_dict[gene2]
-        pair.Common = len(get_common_samples(sample_objs, gene1, gene2))
+        pair.Gene1Freq = gene_percentages[gene1]
+        pair.Gene2Freq = gene_percentages[gene2]
+        pair.Gene1Samples = gene_counts[gene1]
+        pair.Gene2Samples = gene_counts[gene2]
+        pair.Common = 0
+        for patient in patients:
+            if count_data[gene1][patient] and count_data[gene2][patient]:
+                pair.Common += 1
         if filter_common and pair.Common is 0:
             continue
-        pair.PercofSamples = (100.0 * pair.Common / len(sample_objs))
+        pair.PercofSamples = (100.0 * pair.Common / len(patients))
         pair.Co_Occurrence = (100.0 * pair.PercofSamples /
                               (pair.Gene1Freq * pair.Gene2Freq))
         yield pair
@@ -206,27 +136,40 @@ def main():
     log.setLevel(logging.DEBUG)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--list',
-                        help='gene list (Sig43List/Sig200List/MoreThan2)')
-    parser.add_argument('--calc_out',
+    parser.add_argument('-i', '--maf_file', required=True,
+                        help='MAF file with columns gene/patient/effect/categ')
+    parser.add_argument('-l', '--sig_genes_list',
+                        help='file of significant genes')
+    parser.add_argument('-p', '--percent_threshold', type=float,
+                        help='threshold for patients count / total count')
+    parser.add_argument('--calc_out', required=True,
                         help='Output filename')
-    parser.add_argument('--num_out',
+    parser.add_argument('--num_out', required=True,
                         help='Output filename')
     parser.add_argument('--filter_common', action='store_true',
                         help='Filter common')
     args = parser.parse_args()
-    genes_file = args.list
 
-    log.debug('generating sample objects')
-    sample_objs = generate_samples(SAMPLES_FILE)
-
-    log.debug('transforming GENE_NONSILENT, filter for sig genes')
-    genes = get_lines_from_file(os.path.join(LISTS_DIR, genes_file + '.txt'))
-    populate_sample_genes(GENE_NONSILENT, sample_objs, sig_genes=genes)
+    if args.sig_genes_list and args.percent_threshold:
+        raise Exception('Cannot accept both a gene list '
+                        'and percent threshold.')
+    if not any([args.sig_genes_list, args.percent_threshold]):
+        raise Exception('Required: either a gene list '
+                        'and percent threshold.')
+    elif args.sig_genes_list:
+        log.info('Filtering for sig genes from %s...', args.sig_genes_list)
+        sig_genes = get_lines_from_file(args.sig_genes_list)
+        pairs = get_pairs(args.maf_file,
+                          sig_genes=sig_genes, log=log,
+                          filter_common=args.filter_common)
+    elif args.percent_threshold:
+        log.info('Filtering for sig genes using threshold=%f...',
+                 args.percent_threshold)
+        pairs = get_pairs(args.maf_file,
+                          percent_threshold=args.percent_threshold, log=log,
+                          filter_common=args.filter_common)
     log.debug('creating GenePairList')
-    pairs_list = GenePairList(get_pairs(sample_objs, PERC_DICT_FILE,
-                                        NUM_DICT_FILE, log=log,
-                                        filter_common=args.filter_common))
+    pairs_list = GenePairList(pairs)
     print
 
     if args.calc_out:
