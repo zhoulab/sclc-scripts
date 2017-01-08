@@ -1,30 +1,24 @@
-printf <- function(...) cat(sprintf(...))
+printf <- function(...) cat(sprintf(...),"\n")
 library("optparse")
 library("data.table")
 option_list = list(
-    make_option(c("-f", "--file"), type="character", default=NULL,
-                help="dataset file name", metavar="character"),
-    make_option("--out_all", type="character", default="out_all.txt",
-                help="output file name [default= %default]", metavar="character"),
-    make_option("--out_filtered", type="character", default="out_filtered.txt",
-                help="output file name [default= %default]", metavar="character"),
-    make_option(c("-a", "--alpha"), type="double", default=NULL,
-                help="alpha level", metavar="character"),
-    make_option(c("-n", "--num_samples"), type="integer", default=NULL,
-                help="number of samples", metavar="character")
+    make_option(c("-i", "--gene_pairs_num_file"), type="character",
+                help="gene pairs filepath"),
+    make_option("--out_all", type="character",
+                help="output filepath"),
+    make_option("--out_filtered", type="character",
+                help="output filepath, filtered for significance"),
+    make_option(c("-a", "--alpha"), type="double",
+                help="significance level for out_filtered"),
+    make_option(c("-n", "--num_samples"), type="integer",
+                help="number of samples")
 );
-
 opt_parser = OptionParser(option_list=option_list);
 args = parse_args(opt_parser);
 
-printf("Reading lines from %s...\n", args$file)
-printf("Output file destination: %s...\n", args$out_all)
-printf("Filtered file destination: %s...\n", args$out_filtered)
-
-ptm = proc.time()
-print("Loading dataset...")
-data <- fread(args$file, header=T, sep='\t')
-print("Starting analysis...")
+printf("Loading dataset from %s...", args$gene_pairs_num_file)
+data <- fread(args$gene_pairs_num_file, header=T, sep='\t')
+printf("Starting analysis...")
 get_fisher <- function(df) {
     n4 <- as.numeric(df["Common"])
     n2 <- as.numeric(df["Gene2Samples"]) - n4
@@ -35,12 +29,13 @@ get_fisher <- function(df) {
     return(f$p.value)
 }
 data$P_value <- apply(data, 1, get_fisher)
+printf("Adjusting p-values...")
 data$Adjusted_p <- p.adjust(data$P_value, method="BH")
 data <- data[order(data$P_value), ]
+printf("Writing output file: %s", args$out_all)
+printf("Writing filtered output file(alpha=%f): %s",
+       args$alpha, args$out_filtered)
 write.table(format(data, scientific=T, digits=3),
             file=args$out_all, sep="\t", quote=F, row.names=F)
 write.table(format(data[data$P_value < args$alpha, ], scientific=T, digits=3),
             file=args$out_filtered, sep="\t", quote=F, row.names=F)
-
-printf("\n")
-print (proc.time() - ptm)

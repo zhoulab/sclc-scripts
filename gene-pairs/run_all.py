@@ -47,7 +47,7 @@ generate_gene_pair_files(args)
 
 # run Fisher analysis
 subprocess.call(['Rscript', 'gene_pairs_fisher.R',
-                 '-f', num_file,
+                 '-i', num_file,
                  '-a', args.fisher_alpha,
                  '-n', str(len(get_unique_samples(args.maf_file))),
                  '--out_all', fisher_file,
