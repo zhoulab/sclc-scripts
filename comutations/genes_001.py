@@ -34,7 +34,7 @@ def get_spaced_colors(n):
             for i in range(0, max_value, interval)][:-1]
 
 
-def get_mutsig_gene_pvals(mutsig_genes_file):
+def get_mutsig_gene_pvals(mutsig_genes_file, p_value):
     """Return dictionary for gene p-values from `mutsig_genes_file`
 
     Return
@@ -47,10 +47,11 @@ def get_mutsig_gene_pvals(mutsig_genes_file):
         reader = csv.reader(f, delimiter='\t', dialect=dialect)
         col = reader.next().index('p')  # find column index and ignore header
         return {row[0]: float(row[col])
-                for row in reader}
+                for row in reader
+                if float(row[col]) <= p_value}
 
 
-def get_gene_muts(gene_mut_file, mutsig_genes_file):
+def get_gene_muts(gene_mut_file, mutsig_genes_file, p_value):
     """
     Return
     ------
@@ -62,7 +63,7 @@ def get_gene_muts(gene_mut_file, mutsig_genes_file):
                }
     }
     """
-    all_genes_info = get_mutsig_gene_pvals(mutsig_genes_file)
+    all_genes_info = get_mutsig_gene_pvals(mutsig_genes_file, p_value)
     genes_info = {}
     with open(gene_mut_file) as f:
         reader = csv.reader(f, delimiter='\t')
@@ -78,7 +79,7 @@ def get_gene_muts(gene_mut_file, mutsig_genes_file):
     return genes_info
 
 
-def generate_mut_plot(mutsig_genes_file, gene_mut_file, output,
+def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
                       sample_id_output, show_p_values, show_percent_graph):
     """Generate PDF of mutation type plot.
 
@@ -97,7 +98,7 @@ def generate_mut_plot(mutsig_genes_file, gene_mut_file, output,
     show_percent_graph : boolean
         optional generate stacked bar graph for mutation distributions
     """
-    genes_info = get_gene_muts(gene_mut_file, mutsig_genes_file)
+    genes_info = get_gene_muts(gene_mut_file, mutsig_genes_file, p_value)
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
     samples = list(set(itertools.chain(*[genes_info[key].keys()
@@ -243,5 +244,7 @@ if __name__ == "__main__":
                         help='option to show p-values')
     parser.add_argument('--show_percent_graph', action='store_true',
                         help='option to show percentage distribution graph')
+    parser.add_argument('-p', '--p_value', type=float,
+                        help='Sample gene mutation p-value significance cutoff')
     args = parser.parse_args()
     generate_mut_plot(**args.__dict__)
