@@ -3,7 +3,7 @@ import logging
 import os
 import csv
 import sys
-import pickle
+import warnings
 import itertools
 
 from logging import StreamHandler, Formatter
@@ -113,6 +113,13 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
     gene_percentages = {gene: (100.0 * count / len(patients))
                         for gene, count in gene_counts.items()}
 
+    if sig_genes:
+        sig_genes = set(sig_genes)
+        for gene in sig_genes.copy():
+            if gene not in genes:
+                warnings.warn('{} not in {}.'.format(gene, maf_file))
+                warnings.warn('Continuing without the significant gene.')
+                sig_genes.remove(gene)
     if not sig_genes:
         sig_genes = [gene for gene in genes
                      if gene_percentages[gene] > percent_threshold]
