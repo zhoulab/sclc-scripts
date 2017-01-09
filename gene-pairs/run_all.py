@@ -34,11 +34,15 @@ calc_file = 'GenePairs_{}.txt'.format(suffix)
 num_file = 'GenePairsNum_{}.txt'.format(suffix)
 fisher_file = 'FisherGenePairs_{}.txt'.format(suffix)
 fisher_file_filtered = 'FisherGenePairs_{}_{}.txt'.format(suffix, args.fisher_alpha)
+co_occurrence_plot = 'FrequencyPlot_{}.pdf'.format(suffix)
+co_occurrence_table = 'FrequencyTable_{}.txt'.format(suffix)
 
 calc_file = os.path.join(result_dir, calc_file)
 num_file = os.path.join(result_dir, num_file)
 fisher_file = os.path.join(result_dir, fisher_file)
 fisher_file_filtered = os.path.join(result_dir, fisher_file_filtered)
+co_occurrence_plot = os.path.join(result_dir, co_occurrence_plot)
+co_occurrence_table = os.path.join(result_dir, co_occurrence_table)
 
 # generate gene pair files
 args.calc_out = calc_file
@@ -52,3 +56,8 @@ subprocess.call(['Rscript', 'gene_pairs_fisher.R',
                  '-n', str(len(get_unique_samples(args.maf_file))),
                  '--out_all', fisher_file,
                  '--out_filtered', fisher_file_filtered])
+# genereate co-occurrence frequency plot and table
+subprocess.call(['Rscript', 'co-occurrence_freq_plot.R',
+                 '-i', calc_file,
+                 '-o', co_occurrence_plot,
+                 '--freq_table_out', co_occurrence_table])
