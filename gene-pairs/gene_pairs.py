@@ -71,6 +71,50 @@ def get_common_samples(count_data, samples, gene1, gene2):
             yield sample
 
 
+def get_count_data(mutation_tsv_file, outer_value):
+    """Return count data for a mutation TSV file
+
+    Input file must have:
+    * no header
+    * gene ID under column 1
+    * patient ID under column 2
+
+    Parameters
+    ----------
+    mutation_tsv_file : filepath
+    outer_value : 'gene'/'patient'
+
+    Return
+    ------
+    genes : set of gene IDs
+    patients : set of patient IDs
+    count_data :
+    example, when outer_value='gene':
+    {
+        gene : {
+                    patient : count
+               }
+    }
+    """
+    if outer_value not in ('gene', 'patient'):
+        raise ValueError('outer_value must be "gene" or "patient"')
+    with open(mutation_tsv_file) as f:
+        reader = list(csv.reader(f, delimiter='\t'))
+    genes = set([row[0] for row in reader])
+    patients = set([row[1] for row in reader])
+    if outer_value == 'gene':
+        count_data = {gene: {patient: 0 for patient in patients}
+                      for gene in genes}
+        for row in reader:
+            count_data[row[0]][row[1]] += 1
+    else:  # outer_value='patient'
+        count_data = {patient: {gene: 0 for gene in genes}
+                      for patient in patients}
+        for row in reader:
+            count_data[row[1]][row[0]] += 1
+    return genes, patients, count_data
+
+
 def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
               filter_common=False, log=None):
     """
@@ -87,25 +131,10 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
     ----------
     filter_common : filter out common samples
     log : Logger object
-
-    Variables
-    ---------
-    count_data
-    {
-        gene : {
-                    patient : count
-               }
-    }
     """
+
     # get count data
-    with open(maf_file) as f:
-        reader = list(csv.reader(f, delimiter='\t'))
-    genes = set([row[0] for row in reader])
-    patients = set([row[1] for row in reader])
-    count_data = {gene: {patient: 0 for patient in patients}
-                  for gene in genes}
-    for row in reader:
-        count_data[row[0]][row[1]] += 1
+    genes, patients, count_data = get_count_data(maf_file, outer_value='gene')
     # create dictionaries
     gene_counts = {gene: sum([int(bool(count))
                               for patient, count in count_data[gene].items()])
@@ -148,6 +177,20 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
         yield pair
 
 
+def write_patient_counts(mutation_tsv_file, filepath):
+    """Write patient count file
+    excluding duplicate instances of (patient, gene)"""
+    with open(filepath, 'w') as f:
+        writer = csv.writer(f, delimiter='\t')
+        genes, patients, count_data = get_count_data(mutation_tsv_file,
+                                                     outer_value='patient')
+        writer.writerow(['patient', 'count'])
+        for patient in patients:
+            count = sum([int(bool(count))
+                         for gene, count in count_data[patient].items()])
+            writer.writerow([patient, count])
+
+
 def main(args):
     log = logging.getLogger()
     handler = StreamHandler(stream=sys.stdout)
@@ -168,6 +211,8 @@ def main(args):
                             help='Output filename')
         parser.add_argument('--num_out', required=True,
                             help='Output filename')
+        parser.add_argument('--patient_count_out', required=True,
+                            help='Patient count output filepath')
         parser.add_argument('--filter_common', action='store_true',
                             help='Filter common')
         args = parser.parse_args()
@@ -205,6 +250,7 @@ def main(args):
         pairs_list.write(args.num_out,
                          header=['Gene1', 'Gene1Samples',
                                  'Gene2', 'Gene2Samples', 'Common'])
+    write_patient_counts(args.maf_file, args.patient_count_out)
 
 if __name__ == '__main__':
     main()
