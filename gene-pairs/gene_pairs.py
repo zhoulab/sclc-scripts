@@ -177,16 +177,23 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
         yield pair
 
 
-def write_patient_counts(mutation_tsv_file, filepath):
-    """Write patient count file
-    excluding duplicate instances of (patient, gene)"""
+def write_patient_counts(mutation_tsv_file, filepath, ignore_duplicates=False):
+    """Write patient count file to `filepath`
+
+    Parameters
+    ----------
+    mutation_tsv_file : filepath
+        see get_count_data()
+    ignore_duplicates : bool
+        if True, do not count duplicate instances of (patient, gene)
+    """
     with open(filepath, 'w') as f:
         writer = csv.writer(f, delimiter='\t')
         genes, patients, count_data = get_count_data(mutation_tsv_file,
                                                      outer_value='patient')
         writer.writerow(['patient', 'count'])
         for patient in patients:
-            count = sum([int(bool(count))
+            count = sum([int(bool(count)) if ignore_duplicates else count
                          for gene, count in count_data[patient].items()])
             writer.writerow([patient, count])
 
@@ -213,6 +220,8 @@ def main(args):
                             help='Output filename')
         parser.add_argument('--patient_count_out', required=True,
                             help='Patient count output filepath')
+        parser.add_argument('--patient_count_dup_out', required=True,
+                            help='Patient count output with duplicate genes')
         parser.add_argument('--filter_common', action='store_true',
                             help='Filter common')
         args = parser.parse_args()
@@ -250,7 +259,10 @@ def main(args):
         pairs_list.write(args.num_out,
                          header=['Gene1', 'Gene1Samples',
                                  'Gene2', 'Gene2Samples', 'Common'])
-    write_patient_counts(args.maf_file, args.patient_count_out)
+    write_patient_counts(args.maf_file, args.patient_count_out,
+                         ignore_duplicates=True)
+    write_patient_counts(args.maf_file, args.patient_count_dup_out,
+                         ignore_duplicates=False)
 
 if __name__ == '__main__':
     main()

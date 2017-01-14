@@ -33,6 +33,7 @@ else:
 calc_file = 'GenePairs_{}.txt'.format(suffix)
 num_file = 'GenePairsNum_{}.txt'.format(suffix)
 patient_count_file = 'PatientCounts.txt'
+patient_count_dup_file = 'PatientCountsDuplicateGenes.txt'
 fisher_file = 'FisherGenePairs_{}.txt'.format(suffix)
 fisher_file_filtered = 'FisherGenePairs_{}_{}.txt'.format(suffix, args.fisher_alpha)
 co_occurrence_plot = 'FrequencyPlot_{}.pdf'.format(suffix)
@@ -41,6 +42,7 @@ co_occurrence_table = 'FrequencyTable_{}.txt'.format(suffix)
 calc_file = os.path.join(result_dir, calc_file)
 num_file = os.path.join(result_dir, num_file)
 patient_count_file = os.path.join(result_dir, patient_count_file)
+patient_count_dup_file = os.path.join(result_dir, patient_count_dup_file)
 fisher_file = os.path.join(result_dir, fisher_file)
 fisher_file_filtered = os.path.join(result_dir, fisher_file_filtered)
 co_occurrence_plot = os.path.join(result_dir, co_occurrence_plot)
@@ -50,6 +52,7 @@ co_occurrence_table = os.path.join(result_dir, co_occurrence_table)
 args.calc_out = calc_file
 args.num_out = num_file
 args.patient_count_out = patient_count_file
+args.patient_count_dup_out = patient_count_dup_file
 generate_gene_pair_files(args)
 
 # run Fisher analysis
