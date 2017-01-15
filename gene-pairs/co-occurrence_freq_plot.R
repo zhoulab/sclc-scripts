@@ -20,7 +20,9 @@ p <- ggplot(data, aes(Co_Occurrence)) +
      ylab("Frequency") +
      ggtitle("Frequency of Co-Occurrences") +
      theme_bw() +
-     theme(plot.title = element_text(hjust = 0.5))
+     theme(plot.title = element_text(hjust = 0.5),
+           panel.grid.major=element_blank(),
+           panel.grid.minor=element_blank())
 p
 dev.off()
 
