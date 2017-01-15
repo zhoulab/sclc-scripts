@@ -11,11 +11,17 @@ option_list <- list(
 opt_parser <- OptionParser(option_list=option_list);
 args <- parse_args(opt_parser);
 
+pretty_breaks_log <- function(n) {
+    function(x) {
+        axisTicks(log10(range(x, na.rm=TRUE)), log=TRUE, n=n)
+    }
+}
+
 data <- read.table(args$gene_pairs_file, header=T, sep="\t")
 pdf(args$out_file)
 p <- ggplot(data, aes(Co_Occurrence)) +
      geom_histogram(binwidth=1) +
-     scale_y_log10() +
+     scale_y_log10(breaks=pretty_breaks_log(n=5)) +
      xlab("Co-occurrence odds ratio") +
      ylab("Frequency") +
      ggtitle("Frequency of Co-Occurrences") +
