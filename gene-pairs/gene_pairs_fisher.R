@@ -6,10 +6,6 @@ option_list = list(
                 help="gene pairs filepath"),
     make_option("--out_all", type="character",
                 help="output filepath"),
-    make_option("--out_filtered", type="character",
-                help="output filepath, filtered for significance"),
-    make_option(c("-a", "--alpha"), type="double",
-                help="significance level for out_filtered"),
     make_option(c("-n", "--num_samples"), type="integer",
                 help="number of samples")
 );
@@ -33,9 +29,5 @@ printf("Adjusting p-values...")
 data$Adjusted_p <- p.adjust(data$P_value, method="BH")
 data <- data[order(data$P_value), ]
 printf("Writing output file: %s", args$out_all)
-printf("Writing filtered output file(alpha=%f): %s",
-       args$alpha, args$out_filtered)
 write.table(format(data, scientific=T, digits=3),
             file=args$out_all, sep="\t", quote=F, row.names=F)
-write.table(format(data[data$P_value < args$alpha, ], scientific=T, digits=3),
-            file=args$out_filtered, sep="\t", quote=F, row.names=F)
