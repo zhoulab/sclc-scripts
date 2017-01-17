@@ -53,12 +53,12 @@ def get_mutsig_genes(mutsig_genes_file_file):
             yield row[col]
 
 
-def get_unique_samples(simple_maf_file):
+def get_unique_samples(mutation_tsv_file):
     """Return set of patient IDs from a TSV file.
 
     Assume column 2 to be the patient column.
     """
-    with open(simple_maf_file) as f:
+    with open(mutation_tsv_file) as f:
         reader = csv.reader(f, delimiter='\t')
         patients = set([row[1] for row in reader])
     return patients
@@ -115,7 +115,7 @@ def get_count_data(mutation_tsv_file, outer_value):
     return genes, patients, count_data
 
 
-def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
+def get_pairs(mutation_tsv_file, sig_genes=None, percent_threshold=None,
               filter_common=False, log=None):
     """
     Return GenePair objects with base attriutes:
@@ -134,7 +134,8 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
     """
 
     # get count data
-    genes, patients, count_data = get_count_data(maf_file, outer_value='gene')
+    genes, patients, count_data = get_count_data(mutation_tsv_file,
+                                                 outer_value='gene')
     # create dictionaries
     gene_counts = {gene: sum([int(bool(count))
                               for patient, count in count_data[gene].items()])
@@ -146,7 +147,7 @@ def get_pairs(maf_file, sig_genes=None, percent_threshold=None,
         sig_genes = set(sig_genes)
         for gene in sig_genes.copy():
             if gene not in genes:
-                warnings.warn('{} not in {}.'.format(gene, maf_file))
+                warnings.warn('{} not in {}.'.format(gene, mutation_tsv_file))
                 warnings.warn('Continuing without the significant gene.')
                 sig_genes.remove(gene)
     if not sig_genes:
@@ -208,8 +209,8 @@ def main(args):
 
     if not args:
         parser = argparse.ArgumentParser()
-        parser.add_argument('-i', '--maf_file', required=True,
-                            help='MAF file with columns gene/patient/effect/categ')
+        parser.add_argument('-i', '--mutation_tsv_file', required=True,
+                            help='Mutation TSV file with columns gene/patient/effect/categ')
         parser.add_argument('--mutsig_genes_file',
                             help='MutSig genes output file')
         parser.add_argument('-p', '--percent_threshold', type=int,
@@ -235,13 +236,13 @@ def main(args):
     elif args.mutsig_genes_file:
         log.info('Filtering for sig genes from %s...', args.mutsig_genes_file)
         sig_genes = get_mutsig_genes(args.mutsig_genes_file)
-        pairs = get_pairs(args.maf_file,
+        pairs = get_pairs(args.mutation_tsv_file,
                           sig_genes=sig_genes, log=log,
                           filter_common=args.filter_common)
     elif args.percent_threshold:
         log.info('Filtering for sig genes using threshold=%i...',
                  args.percent_threshold)
-        pairs = get_pairs(args.maf_file,
+        pairs = get_pairs(args.mutation_tsv_file,
                           percent_threshold=args.percent_threshold, log=log,
                           filter_common=args.filter_common)
     log.debug('creating GenePairList')
@@ -259,9 +260,9 @@ def main(args):
         pairs_list.write(args.num_out,
                          header=['Gene1', 'Gene1Samples',
                                  'Gene2', 'Gene2Samples', 'Common'])
-    write_patient_counts(args.maf_file, args.patient_count_out,
+    write_patient_counts(args.mutation_tsv_file, args.patient_count_out,
                          ignore_duplicates=True)
-    write_patient_counts(args.maf_file, args.patient_count_dup_out,
+    write_patient_counts(args.mutation_tsv_file, args.patient_count_dup_out,
                          ignore_duplicates=False)
 
 if __name__ == '__main__':

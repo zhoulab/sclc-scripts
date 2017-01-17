@@ -6,8 +6,8 @@ import subprocess
 from gene_pairs import get_unique_samples, main as generate_gene_pair_files
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--maf_file', required=True,
-                    help='MAF file with columns gene/patient/effect/categ')
+parser.add_argument('-i', '--mutation_tsv_file', required=True,
+                    help='Mutation TSV file with columns gene/patient/effect/categ')
 parser.add_argument('--mutsig_genes_file',
                     help='MutSig genes output file')
 parser.add_argument('-p', '--percent_threshold', type=int,
@@ -53,7 +53,7 @@ generate_gene_pair_files(args)
 # run Fisher analysis
 subprocess.call(['Rscript', 'gene_pairs_fisher.R',
                  '-i', filepaths['num_file'],
-                 '-n', str(len(get_unique_samples(args.maf_file))),
+                 '-n', str(len(get_unique_samples(args.mutation_tsv_file))),
                  '--out_all', filepaths['fisher_file']])
 # genereate co-occurrence frequency plot and table
 subprocess.call(['Rscript', 'co-occurrence_freq_plot.R',
