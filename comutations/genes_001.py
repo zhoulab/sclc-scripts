@@ -150,9 +150,12 @@ def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
     ax1.xaxis.set_ticks(np.arange(-0.5, nrows - 0.5))
     ax1.yaxis.tick_right()
     ax1.yaxis.set_ticks(np.arange(-0.5, ncols - 0.5))
+    ax1.yaxis.set_ticks(np.arange(0, ncols), minor=True)
     ax1.set_xticklabels([i for i, __ in sample_nums],
                         rotation='vertical', fontsize=4, ha='left')
-    ax1.set_yticklabels(genes_list, fontsize=13, va='top')
+    ax1.set_yticklabels([])
+    ax1.set_yticklabels(genes_list, fontsize=13, va='center', minor=True)
+    ax1.tick_params(axis='both', which='both', length=0)
     ax1.grid(linestyle='solid', color=((.3,) * 3))
     box = ax1.get_position()
     ax1.set_position([box.x0, box.y0, box.width * 0.8, box.height])
