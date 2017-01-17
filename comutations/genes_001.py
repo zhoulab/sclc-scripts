@@ -51,7 +51,7 @@ def get_mutsig_gene_pvals(mutsig_genes_file, p_value):
                 if float(row[col]) <= p_value}
 
 
-def get_gene_muts(gene_mut_file, mutsig_genes_file, p_value):
+def get_gene_muts(mutation_tsv_file, mutsig_genes_file, p_value):
     """
     Return
     ------
@@ -65,7 +65,7 @@ def get_gene_muts(gene_mut_file, mutsig_genes_file, p_value):
     """
     all_genes_info = get_mutsig_gene_pvals(mutsig_genes_file, p_value)
     genes_info = {}
-    with open(gene_mut_file) as f:
+    with open(mutation_tsv_file) as f:
         reader = csv.reader(f, delimiter='\t')
         for i, row in enumerate(reader):
             if not row:
@@ -79,17 +79,17 @@ def get_gene_muts(gene_mut_file, mutsig_genes_file, p_value):
     return genes_info
 
 
-def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
+def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
                       sample_id_output, show_p_values, show_percent_graph,
-                      num_genes=None):
+                      mut_type_map, num_genes=None):
     """Generate PDF of mutation type plot.
 
     Parameters
     ----------
     mutsig_genes_file : filepath
         filepath for MutSig genes file
-    gene_mut_file : filepath
-        filepath for TSV file of gene mutation information
+    mutation_tsv_file : filepath
+        filepath for Mutation TSV file with columns gene/patient/effect/categ
     output : filepath
         plot PDF destination
     sample_id_output : filepath
@@ -101,7 +101,7 @@ def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
     num_genes : int
         limit on number of genes to display
     """
-    genes_info = get_gene_muts(gene_mut_file, mutsig_genes_file, p_value)
+    genes_info = get_gene_muts(mutation_tsv_file, mutsig_genes_file, p_value)
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
     if num_genes:
@@ -138,14 +138,9 @@ def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
     ax1.tick_params(length=0)
 
     colors = ['#ad2a1a', '#da621e', '#d3b53d', '#829356', '#0d3d56']
-    mut_types = OrderedDict([('3', 'C:G transitions'),
-                             ('4', 'C:G transversions'),
-                             ('5', 'A:T transitions'),
-                             ('6', 'A:T transversions'),
-                             ('7', 'null+indel mutations')])
     color_map = ListedColormap(colors)
     proxies = [create_proxy(item) for item in colors]
-    plt.legend(proxies, mut_types.values(), numpoints=1, loc='lower right',
+    plt.legend(proxies, mut_type_map.values(), numpoints=1, loc='lower right',
                markerscale=2, bbox_to_anchor=(0, 1), fontsize=12)
 
     comut_grid = ax1.imshow(image, aspect='auto', interpolation='nearest')
@@ -186,23 +181,23 @@ def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
                 if s != 'p':
                     if gene not in mut_summary:
                         mut_summary[gene] = {}
-                        for mut in mut_types:
+                        for mut in mut_type_map:
                             mut_summary[gene][mut] = 0
                     mut_summary[gene][m] += 1
         totals = [sum([mut_summary[g][m]
-                       for m in mut_types])
+                       for m in mut_type_map])
                   for g in genes_list]
         bar_data = {}
-        for mut in mut_types:
+        for mut in mut_type_map:
             bar_data[mut] = [(float(n) / total * 100) for n, total in
                              zip([mut_summary[g][mut] for g in genes_list], totals)]
             bar_l = list(reversed([i for i in range(len(genes_list))]))
             bottom = [0] * len(genes_list)
-            for m in mut_types.keys()[:mut_types.keys().index(mut)]:
+            for m in mut_type_map.keys()[:mut_type_map.keys().index(mut)]:
                 bottom = [base + last
                           for base, last in zip(bottom, bar_data[m])]
             ax3.barh(bar_l, bar_data[mut], 1, left=bottom,
-                     color=colors[mut_types.keys().index(mut)], linewidth=0)
+                     color=colors[mut_type_map.keys().index(mut)], linewidth=0)
         ax3.set_xlim([0, 100])
         ax3.set_ylim([0, len(genes_list)])
         ax3.tick_params(left='off', labelleft='off')
@@ -239,8 +234,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate comutation plots')
     parser.add_argument('--mutsig_genes_file', required=True,
                         help='MutSig genes output file')
-    parser.add_argument('--gene_mut_file', required=True,
-                        help='TSV file of gene mutation information')
+    parser.add_argument('--mutation_tsv_file', required=True,
+                        help='Mutation TSV file with columns gene/patient/effect/categ')
     parser.add_argument('-o', '--output', required=True,
                         help='output PDF filepath')
     parser.add_argument('--sample_id_output', required=False,
@@ -254,4 +249,9 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--num_genes', type=int, required=False,
                         help='Number of genes to display')
     args = parser.parse_args()
-    generate_mut_plot(**args.__dict__)
+    mut_type_map = OrderedDict([('3', 'C:G transitions'),
+                                ('4', 'C:G transversions'),
+                                ('5', 'A:T transitions'),
+                                ('6', 'A:T transversions'),
+                                ('7', 'null+indel mutations')])
+    generate_mut_plot(mut_type_map=mut_type_map, **args.__dict__)
