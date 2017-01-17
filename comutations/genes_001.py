@@ -80,7 +80,8 @@ def get_gene_muts(gene_mut_file, mutsig_genes_file, p_value):
 
 
 def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
-                      sample_id_output, show_p_values, show_percent_graph):
+                      sample_id_output, show_p_values, show_percent_graph,
+                      num_genes=None):
     """Generate PDF of mutation type plot.
 
     Parameters
@@ -97,10 +98,14 @@ def generate_mut_plot(mutsig_genes_file, gene_mut_file, p_value, output,
         optional generate p-value graph [-log(p)]
     show_percent_graph : boolean
         optional generate stacked bar graph for mutation distributions
+    num_genes : int
+        limit on number of genes to display
     """
     genes_info = get_gene_muts(gene_mut_file, mutsig_genes_file, p_value)
 
     genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
+    if num_genes:
+        genes_list = genes_list[:num_genes]
     samples = list(set(itertools.chain(*[genes_info[key].keys()
                                          for key in genes_info])
                        ) - {'p'})
@@ -246,5 +251,7 @@ if __name__ == "__main__":
                         help='option to show percentage distribution graph')
     parser.add_argument('-p', '--p_value', type=float,
                         help='Sample gene mutation p-value significance cutoff')
+    parser.add_argument('-n', '--num_genes', type=int, required=False,
+                        help='Number of genes to display')
     args = parser.parse_args()
     generate_mut_plot(**args.__dict__)
