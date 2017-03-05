@@ -20,7 +20,7 @@ rb1_samples_sig_gene_mutations = sig_gene_mutations[sig_gene_mutations['patient'
 
 
 # write significant gene mutations from RB1 mutated samples
-rb1_samples_sig_gene_mutations.to_csv('results/SigGenes_005_B1_samples_4dataset_nonsilent.tsv',
+rb1_samples_sig_gene_mutations.to_csv('results/SigGenes_005_RB1_samples_4dataset_nonsilent.tsv',
                                       sep='\t', index=False)
 
 # write significant gene mutations from non-RB1 mutated samples
