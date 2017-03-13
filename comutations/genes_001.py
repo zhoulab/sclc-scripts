@@ -4,7 +4,6 @@ import itertools
 import warnings
 import math
 import matplotlib
-matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
@@ -140,8 +139,9 @@ def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
     colors = ['#ad2a1a', '#da621e', '#d3b53d', '#829356', '#0d3d56']
     color_map = ListedColormap(colors)
     proxies = [create_proxy(item) for item in colors]
-    plt.legend(proxies, mut_type_map.values(), numpoints=1, loc='lower right',
-               markerscale=2, bbox_to_anchor=(0, 1), fontsize=12)
+    plt.legend(proxies, mut_type_map.values(), numpoints=1, loc='lower center',
+               markerscale=2, fontsize=12, ncol=5,
+               bbox_to_anchor=[0.5, 1.02])
 
     comut_grid = ax1.imshow(image, aspect='auto', interpolation='nearest')
     comut_grid.set_cmap(color_map)
@@ -208,29 +208,7 @@ def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
         ax3.set_xticklabels([0, 20, 40, 60, 80, 100], rotation='vertical')
         ax3.get_xaxis().set_tick_params(direction='out')
 
-    # adjust box positions
-    if show_p_values and show_percent_graph:
-        box3 = ax3.get_position()
-        ax3.set_position([box3.x0, box3.y0 + box3.height * 0.5,
-                          box3.width * 0.2, box3.height * 0.5])
-        box1 = ax1.get_position()
-        ax1.set_position([box1.x0 + box3.width * 0.2, box1.y0 + box1.height * 0.5,
-                          box1.width, box1.height * 0.5])
-        box2 = ax2.get_position()
-        ax2.set_position([box2.x0 * 1.01, box2.y0 + box2.height * 0.5,
-                          box2.width, box2.height * 0.5])
-
-        # lower everything
-        for ax in (ax1, ax2, ax3):
-            box = ax.get_position()
-            ax.set_position([box.x0, box.y0 - box.height * 0.5,
-                             box.width, box.height])
-    else:
-        box = ax1.get_position()
-        ax1.set_position([box.x0, box.y0 + box.height * 0.25,
-                          box.width, box.height * 0.5])
-
-    plt.savefig(output)
+    plt.savefig(output, bbox_inches='tight', format='pdf')
 
 
 if __name__ == "__main__":
