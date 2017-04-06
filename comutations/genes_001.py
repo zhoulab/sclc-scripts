@@ -33,7 +33,7 @@ def get_spaced_colors(n):
             for i in range(0, max_value, interval)][:-1]
 
 
-def get_mutsig_gene_pvals(mutsig_genes_file, p_value):
+def get_mutsig_gene_pvals(mutsig_genes_file, p_value=None):
     """Return dictionary for gene p-values from `mutsig_genes_file`
 
     Return
@@ -45,42 +45,74 @@ def get_mutsig_gene_pvals(mutsig_genes_file, p_value):
         f.seek(0)
         reader = csv.reader(f, delimiter='\t', dialect=dialect)
         col = reader.next().index('p')  # find column index and ignore header
+        if p_value:
+            return {row[0]: float(row[col])
+                    for row in reader
+                    if float(row[col]) <= p_value}
         return {row[0]: float(row[col])
-                for row in reader
-                if float(row[col]) <= p_value}
+                for row in reader}
 
 
-def get_gene_muts(mutation_tsv_file, mutsig_genes_file, p_value):
+def get_gene_info(mutation_tsv_file, mutsig_genes_file,
+                  p_value=None, gene_list_file=None,
+                  num_genes=None):
     """
     Return
     ------
     genes_info (dict of dicts)
     {
         gene : {
-                      'p' : p-value (float)
-                   sample : mutation (str)
+                        'p' : p-value (float)
+                    'score' : score (float)
+                     sample : mutation (str)
                }
     }
     """
-    all_genes_info = get_mutsig_gene_pvals(mutsig_genes_file, p_value)
-    genes_info = {}
+
+    if gene_list_file:
+        with open(gene_list_file) as f:
+            genes_and_scores = OrderedDict([(line.split()[0], float(line.split()[1])
+                                            if len(line.split()) == 2 else None)
+                                            for line in f])
+    else:
+        all_genes_info = get_mutsig_gene_pvals(mutsig_genes_file, p_value)
+
+    genes_info = OrderedDict()
     with open(mutation_tsv_file) as f:
         reader = csv.reader(f, delimiter='\t')
         for i, row in enumerate(reader):
             if not row:
                 warnings.warn('Samples file: line {} is empty'.format(i + 1),
                               stacklevel=2)
-            elif row[0] in all_genes_info:
+            elif ((gene_list_file and (row[0] in genes_and_scores)) or
+                  ((not gene_list_file) and (row[0] in all_genes_info))):
+                # new gene
                 if row[0] not in genes_info:
                     genes_info[row[0]] = {}
-                    genes_info[row[0]]['p'] = all_genes_info[row[0]]
+                    if gene_list_file:
+                        genes_info[row[0]]['score'] = genes_and_scores[row[0]]
+                    else:
+                        genes_info[row[0]]['p'] = all_genes_info[row[0]]
+                if row[1] in genes_info[row[0]]:
+                    warnings.warn('Gene {} already has a mutation entry ({}) for sample {}.\n'
+                                  'Overwriting with value {}.'.format(row[0], genes_info[row[0]][row[1]], row[1], row[3]),
+                                  stacklevel=2)
                 genes_info[row[0]][row[1]] = row[3]
+    if gene_list_file:
+        sorted_genes = sorted(genes_and_scores, key=lambda g: genes_and_scores[g],
+                              reverse=True)
+    else:
+        sorted_genes = sorted(genes_info, key=lambda g: genes_info[g]['p'])
+    genes_info = OrderedDict((gene, genes_info[gene]) for gene in sorted_genes)
+    if num_genes:
+        genes_info = genes_info[:num_genes]
     return genes_info
 
 
-def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
+def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, output,
                       sample_id_output, show_p_values, show_percent_graph,
-                      mut_type_map, num_genes=None):
+                      mut_type_map, num_genes=None,
+                      p_value=None, gene_list_file=None):
     """Generate PDF of mutation type plot.
 
     Parameters
@@ -97,17 +129,22 @@ def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
         optional generate p-value graph [-log(p)]
     show_percent_graph : boolean
         optional generate stacked bar graph for mutation distributions
+    mut_type_map : OrderedDict
+        mutation type names for legend
     num_genes : int
         limit on number of genes to display
+    p_value : float
+        p_value upper limit filter
+    gene_list_file : filepath
+        filepath for gene list with {gene name}\t{score}
     """
-    genes_info = get_gene_muts(mutation_tsv_file, mutsig_genes_file, p_value)
+    genes_info = get_gene_info(mutation_tsv_file, mutsig_genes_file,
+                               p_value, gene_list_file)
 
-    genes_list = sorted(genes_info.keys(), key=lambda g: genes_info[g]['p'])
-    if num_genes:
-        genes_list = genes_list[:num_genes]
+    genes_list = genes_info.keys()
     samples = list(set(itertools.chain(*[genes_info[key].keys()
                                          for key in genes_info])
-                       ) - {'p'})
+                       ) - {'p', 'score'})
     for gene in list(reversed(genes_list)):
         samples = sorted(samples, key=lambda mut: mut not in genes_info[gene])
     sample_nums = [(i + 1, s) for i, s in enumerate(samples)]
@@ -213,6 +250,7 @@ def generate_mut_plot(mutsig_genes_file, mutation_tsv_file, p_value, output,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate comutation plots')
+    # TODO: mutsig_genes_file is not relevant when gene_list_file is specified
     parser.add_argument('--mutsig_genes_file', required=True,
                         help='MutSig genes output file')
     parser.add_argument('--mutation_tsv_file', required=True,
@@ -225,10 +263,13 @@ if __name__ == "__main__":
                         help='option to show p-values')
     parser.add_argument('--show_percent_graph', action='store_true',
                         help='option to show percentage distribution graph')
-    parser.add_argument('-p', '--p_value', type=float,
-                        help='Sample gene mutation p-value significance cutoff')
     parser.add_argument('-n', '--num_genes', type=int, required=False,
                         help='Number of genes to display')
+    # specify one of the following:
+    parser.add_argument('-p', '--p_value', type=float,
+                        help='Sample gene mutation p-value significance cutoff')
+    parser.add_argument('-g', '--gene_list_file', required=False,
+                        help='Filepath for list of genes')
     args = parser.parse_args()
     mut_type_map = OrderedDict([('3', 'C:G transitions'),
                                 ('4', 'C:G transversions'),
