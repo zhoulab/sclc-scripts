@@ -4,6 +4,7 @@ import itertools
 import warnings
 import math
 import matplotlib
+matplotlib.use('PDF')
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
