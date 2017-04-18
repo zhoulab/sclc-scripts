@@ -1,8 +1,8 @@
 # genes with p<=.001
-python genes_001.py --mutsig_genes_file ../data/SigGenes_005.txt --mutation_tsv_file ../data/4dataset_nonsilent.txt -p 0.001 -o ../results/SCLC_comut_plot_p001.pdf --sample_id_out ../results/SampleIDs_p001.txt
+python comutation_plot.py --mutsig_genes_file ../data/SigGenes_005.txt --mutation_tsv_file ../data/4dataset_nonsilent.txt -p 0.001 -o ../results/SCLC_comut_plot_p001.pdf --sample_id_out ../results/SampleIDs_p001.txt
 
 # top 8 genes with p<=.001 with color map
-python genes_001.py --mutsig_genes_file ../data/SigGenes_005.txt --mutation_tsv_file ../data/4dataset_nonsilent.txt -p 0.001 -o ../results/SCLC_comut_plot_p001.pdf --sample_id_out ../results/SampleIDs_p001.txt --num_genes 8 --color_map
+python comutation_plot.py --mutsig_genes_file ../data/SigGenes_005.txt --mutation_tsv_file ../data/4dataset_nonsilent.txt -p 0.001 -o ../results/SCLC_comut_plot_p001_8.pdf --sample_id_out ../results/SampleIDs_p001_8.txt --num_genes 8 --color_map
 
 # all genes from genes.txt
-python genes_001.py --mutation_tsv_file ../data/4dataset_nonsilent.txt -o ../results/SCLC_comut_plot_genes.pdf --sample_id_out ../results/SampleIDs_genes.txt --gene_list_file ../data/gene-lists/genes.txt
+python comutation_plot.py --mutation_tsv_file ../data/4dataset_nonsilent.txt -o ../results/SCLC_comut_plot_genes.pdf --sample_id_out ../results/SampleIDs_genes.txt --gene_list_file ../data/gene-lists/genes.txt

@@ -114,6 +114,8 @@ def generate_mut_plot(args):
     See ArgumentParser in __main__ for parameter info.
     """
     genes_info = get_gene_info(args)
+    for gene, info in genes_info.iteritems():
+        print '{}\t{}'.format(gene, info['p'])
 
     genes_list = genes_info.keys()
     samples = list(set(itertools.chain(*[genes_info[key].keys()
