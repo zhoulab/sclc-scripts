@@ -114,6 +114,7 @@ def generate_mut_plot(args):
     See ArgumentParser in __main__ for parameter info.
     """
     genes_info = get_gene_info(args)
+    print 'Displaying {} genes:'.format(len(genes_info))
     for gene, info in genes_info.iteritems():
         print '{}\t{}'.format(gene, info['p'])
 
@@ -144,7 +145,12 @@ def generate_mut_plot(args):
                 image[r][c] = None
 
     plt.subplot(132)
-    plt.rcParams["figure.figsize"] = [20.0, 5.0]
+    x = 20.0
+    if len(genes_info) > 25:
+        y = len(genes_info) / 5
+    else:
+        y = 5.0
+    plt.rcParams["figure.figsize"] = [x, y]
 
     fig, ax1 = plt.subplots()
     ax1.tick_params(length=0)
